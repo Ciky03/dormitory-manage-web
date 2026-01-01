@@ -1,47 +1,11 @@
-<script setup>
-import SideNav from '../../components/SideNav.vue'
-import TopBar from '../../components/TopBar.vue'
-</script>
-
 <template>
-  <div class="home-layout">
-    <TopBar class="home-topbar" />
-    <div class="home-body">
-      <SideNav />
-      <main class="home-content">
-        <header class="home-header">
-          <h1>宿舍管理系统</h1>
-          <p>欢迎进入系统首页，请从左侧菜单进入对应功能。</p>
-        </header>
-      </main>
-    </div>
-  </div>
+  <header class="home-header">
+    <h1>宿舍管理系统</h1>
+    <p>欢迎进入系统首页，请从左侧菜单进入对应功能。</p>
+  </header>
 </template>
 
 <style scoped>
-.home-layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f7fb;
-}
-
-.home-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.home-body {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  min-height: 0;
-}
-
-.home-content {
-  padding: 36px 40px;
-}
-
 .home-header {
   background: #ffffff;
   padding: 24px 28px;

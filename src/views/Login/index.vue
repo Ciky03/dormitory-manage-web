@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import heroImage from '../../assets/login-hero.svg'
 import { login } from '../../api/auth'
 import { request } from '../../api/request'
@@ -11,6 +12,7 @@ const form = ref({
 const loading = ref(false)
 const errorMessage = ref('')
 const statusMessage = ref('')
+const router = useRouter()
 
 const handleSubmit = async () => {
   errorMessage.value = ''
@@ -28,6 +30,7 @@ const handleSubmit = async () => {
       password: form.value.password
     })
     statusMessage.value = data?.message || '登录成功'
+    await router.push({ name: 'home' })
   } catch (error) {
     errorMessage.value = error?.message || '登录失败，请稍后再试'
   } finally {

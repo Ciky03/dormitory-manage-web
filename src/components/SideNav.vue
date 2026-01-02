@@ -48,7 +48,7 @@ const activePath = computed(() => route.path)
         router
         background-color="transparent"
         text-color="#2f3a55"
-        active-text-color="#2f5bff"
+        active-text-color="var(--app-primary)"
       >
         <el-menu-item
           v-for="item in topLevelItems"
@@ -114,13 +114,25 @@ const activePath = computed(() => route.path)
   height: 38px;
   line-height: 38px;
   padding-left: 22px;
-  border-radius: 10px;
+  border-radius: 4px;
   margin: 2px 8px;
+  position: relative;
 }
 
 .menu :deep(.el-menu-item.is-active) {
-  background: #eef3ff;
-  color: #2f5bff;
+  background: #f2f5ff;
+  color: var(--app-primary);
+}
+
+.menu :deep(.el-menu-item.is-active)::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--app-primary);
 }
 
 .todo-tag {

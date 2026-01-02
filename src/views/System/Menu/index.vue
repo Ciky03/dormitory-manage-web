@@ -94,10 +94,12 @@ onMounted(loadMenus)
 .menu-page {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .menu-table {
   border-radius: 12px;
+  width: 100%;
 }
 
 .menu-card {
@@ -105,11 +107,16 @@ onMounted(loadMenus)
   border-radius: 18px;
   padding: 16px 18px 18px;
   box-shadow: 0 18px 40px rgba(22, 33, 60, 0.08);
+  overflow: hidden;
 }
 
 .menu-card__toolbar {
   display: flex;
   justify-content: flex-start;
   margin-bottom: 12px;
+}
+
+.menu-card :deep(.el-table__body-wrapper) {
+  overflow-x: auto;
 }
 </style>

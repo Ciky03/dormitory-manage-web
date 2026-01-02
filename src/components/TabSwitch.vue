@@ -62,11 +62,30 @@ const handleTabRemove = (name) => {
 .tabs :deep(.el-tabs__item) {
   height: 42px;
   line-height: 42px;
-  border-radius: 10px 10px 0 0;
+  border-radius: 4px 4px 0 0;
   font-weight: 600;
+  position: relative;
+  border-left: none;
+  border-right: none;
 }
 
 .tabs :deep(.el-tabs__item.is-active) {
-  color: #2f5bff;
+  color: var(--app-primary);
+  background: #f2f5ff;
+}
+
+.tabs :deep(.el-tabs__item.is-active)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2px;
+  height: 2px;
+  border-radius: 3px;
+  background: var(--app-primary);
+}
+
+.tabs :deep(.el-tabs__nav) {
+  border: none;
 }
 </style>

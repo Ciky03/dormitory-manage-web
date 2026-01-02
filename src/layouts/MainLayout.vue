@@ -73,7 +73,7 @@ const handleTabChange = (name) => {
 
 <style scoped>
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: #f5f7fb;
@@ -89,15 +89,20 @@ const handleTabChange = (name) => {
   display: grid;
   grid-template-columns: auto 1fr;
   min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .app-main {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .app-content {
   padding: 36px 40px;
+  flex: 1 1 auto;
+  overflow: auto;
 }
 </style>

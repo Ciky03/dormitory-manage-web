@@ -8,7 +8,7 @@ const MENU_ROUTES_KEY = 'menu_routes'
 
 const menuRoutes = ref([])
 
-const topLevelItems = [{ label: '系统首页', path: '/home' }]
+const topLevelItems = [{ label: '首页', path: '/home' }]
 
 const activePath = computed(() => route.path)
 

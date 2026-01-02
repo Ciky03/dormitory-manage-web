@@ -321,77 +321,74 @@ onMounted(loadMenus)
 </script>
 
 <template>
-  <section class="menu-page">
-    <section class="menu-card">
-      <div class="menu-card__toolbar">
-        <AddButton @click="handleAdd" />
-      </div>
-      <el-table
-        v-loading="loading"
-        :data="tableData"
-        row-key="id"
-        default-expand-all
-        border
-        class="menu-table"
-      >
-        <el-table-column prop="name" label="菜单名称" min-width="180" fixed="left" />
-        <el-table-column label="类型" width="90">
-          <template #default="{ row }">
-            <el-tag
-              :type="row.type === 2 ? 'warning' : row.type === 1 ? 'success' : 'info'"
-              effect="light"
-            >
-              {{
-                row.type === 1
-                  ? '菜单'
-                  : row.type === 2
-                    ? '目录'
-                    : row.type === 3
-                      ? '外链'
-                      : row.type === 4
-                        ? '按钮'
-                        : '-'
-              }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="routeName" label="路由名称" min-width="140" />
-        <el-table-column prop="routePath" label="路由路径" min-width="160" />
-        <el-table-column prop="component" label="组件路径" min-width="220" />
-        <el-table-column prop="perm" label="权限标识" min-width="120" />
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
-              {{ row.visible ? '已启用' : '已禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sort" label="排序ID" width="90" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleRowAdd(row)">新增</el-button>
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button
-              v-if="row.visible"
-              type="warning"
-              link
-              @click="openToggleDialog(row)"
-            >
-              禁用
-            </el-button>
-            <el-button
-              v-else
-              type="warning"
-              link
-              @click="openToggleDialog(row)"
-            >
-              启用
-            </el-button>
-            <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </section>
+  <div class="menu-card__toolbar">
+    <AddButton @click="handleAdd" />
+  </div>
+  <el-table
+    v-loading="loading"
+    :data="tableData"
+    row-key="id"
+    default-expand-all
+    border
+    class="menu-table"
+  >
+    <el-table-column prop="name" label="菜单名称" min-width="180" fixed="left" />
+    <el-table-column label="类型" width="90">
+      <template #default="{ row }">
+        <el-tag
+          :type="row.type === 2 ? 'warning' : row.type === 1 ? 'success' : 'info'"
+          effect="light"
+        >
+          {{
+            row.type === 1
+              ? '菜单'
+              : row.type === 2
+                ? '目录'
+                : row.type === 3
+                  ? '外链'
+                  : row.type === 4
+                    ? '按钮'
+                    : '-'
+          }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column prop="routeName" label="路由名称" min-width="140" />
+    <el-table-column prop="routePath" label="路由路径" min-width="160" />
+    <el-table-column prop="component" label="组件路径" min-width="220" />
+    <el-table-column prop="perm" label="权限标识" min-width="120" />
+    <el-table-column label="状态" width="90">
+      <template #default="{ row }">
+        <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
+          {{ row.visible ? '已启用' : '已禁用' }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column prop="sort" label="排序ID" width="90" />
+    <el-table-column label="操作" width="200" fixed="right">
+      <template #default="{ row }">
+        <el-button type="primary" link @click="handleRowAdd(row)">新增</el-button>
+        <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+        <el-button
+          v-if="row.visible"
+          type="warning"
+          link
+          @click="openToggleDialog(row)"
+        >
+          禁用
+        </el-button>
+        <el-button
+          v-else
+          type="warning"
+          link
+          @click="openToggleDialog(row)"
+        >
+          启用
+        </el-button>
+        <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
     <el-drawer
       v-model="drawerVisible"
       direction="rtl"
@@ -527,30 +524,12 @@ onMounted(loadMenus)
         </div>
       </template>
     </el-dialog>
-  </section>
 </template>
 
 <style scoped>
-.menu-page {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  min-height: 100%;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .menu-table {
   border-radius: 6px;
   width: 100%;
-}
-
-.menu-card {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 16px 18px 18px;
-  box-shadow: 0 18px 40px rgba(22, 33, 60, 0.08);
-  overflow: hidden;
 }
 
 .menu-card__toolbar {
@@ -559,7 +538,7 @@ onMounted(loadMenus)
   margin-bottom: 12px;
 }
 
-.menu-card :deep(.el-table__body-wrapper) {
+.menu-table :deep(.el-table__body-wrapper) {
   overflow-x: auto;
 }
 
@@ -638,7 +617,6 @@ onMounted(loadMenus)
   gap: 10px;
 }
 </style>
-
 
 
 

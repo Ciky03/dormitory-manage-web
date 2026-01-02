@@ -64,7 +64,11 @@ const handleTabChange = (name) => {
           @update:model-value="handleTabChange"
         />
         <main class="app-content">
-          <router-view />
+          <section class="app-page">
+            <section class="app-card">
+              <router-view />
+            </section>
+          </section>
         </main>
       </div>
     </div>
@@ -104,5 +108,22 @@ const handleTabChange = (name) => {
   padding: 10px 10px;
   flex: 1 1 auto;
   overflow: auto;
+}
+
+.app-page {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.app-card {
+  background: #ffffff;
+  border-radius: 2px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 18px 40px rgba(22, 33, 60, 0.08);
+  overflow: hidden;
 }
 </style>

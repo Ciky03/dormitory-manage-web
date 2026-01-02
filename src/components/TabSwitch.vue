@@ -44,7 +44,6 @@ const handleTabRemove = (name) => {
 <style scoped>
 .tab-switch {
   background: #ffffff;
-  border-bottom: 1px solid #e3e8f3;
 }
 
 .tabs {
@@ -62,11 +61,12 @@ const handleTabRemove = (name) => {
 .tabs :deep(.el-tabs__item) {
   height: 42px;
   line-height: 42px;
-  border-radius: 4px 4px 0 0;
+  /* border-radius: 4px 4px 0 0; */
   font-weight: 600;
   position: relative;
   border-left: none;
   border-right: none;
+  border-radius: 0;
 }
 
 .tabs :deep(.el-tabs__item.is-active) {
@@ -79,7 +79,7 @@ const handleTabRemove = (name) => {
   position: absolute;
   left: 0;
   right: 0;
-  top: 2px;
+  top: 0;
   height: 2px;
   border-radius: 3px;
   background: var(--app-primary);
@@ -87,6 +87,26 @@ const handleTabRemove = (name) => {
 
 .tabs :deep(.el-tabs__nav) {
   border: none;
+}
+
+.tabs :deep(.el-tabs__header) {
+  border-bottom: none !important;
+}
+
+.tabs :deep(.el-tabs__nav) {
+  border-bottom: none !important;
+}
+
+.tabs :deep(.el-tabs__item) {
+  border-bottom: none !important;
+}
+
+.tabs :deep(.el-tabs__item),
+.tabs :deep(.el-tabs__item.is-active),
+.tabs :deep(.el-tabs__nav),
+.tabs :deep(.el-tabs__nav-scroll),
+.tabs :deep(.el-tabs__nav-wrap) {
+  border-radius: 0 !important;
 }
 
 .tabs :deep(.el-tabs__item + .el-tabs__item)::before {

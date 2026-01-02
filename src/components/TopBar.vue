@@ -1,6 +1,7 @@
 <script setup>
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import topicIcon from '../assets/topic.svg'
 
 const props = defineProps({
   userName: {
@@ -29,14 +30,7 @@ const handleCommand = (command) => {
 <template>
   <el-header class="top-bar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img" focusable="false">
-          <path
-            d="M4 10.2L12 4l8 6.2v8.3a1 1 0 0 1-1 1h-5.2v-6H10.2v6H5a1 1 0 0 1-1-1z"
-            fill="currentColor"
-          />
-        </svg>
-      </span>
+      <img :src="topicIcon" alt="" class="brand-icon" />
       <el-text class="brand-text">宿舍管理平台</el-text>
     </div>
     <el-space :size="10" alignment="center" class="user-info">
@@ -82,20 +76,10 @@ const handleCommand = (command) => {
   color: #1f2a44;
 }
 
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #2f5bff 0%, #38bdf8 100%);
-  box-shadow: 0 8px 18px rgba(47, 91, 255, 0.25);
-  display: grid;
-  place-items: center;
-  color: #ffffff;
-}
-
-.brand-mark svg {
-  width: 18px;
-  height: 18px;
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .brand-text {

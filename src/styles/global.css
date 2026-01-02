@@ -84,3 +84,21 @@ a {
   --el-button-bg-color: var(--app-warning);
   --el-button-border-color: var(--app-warning);
 }
+/* Center top notifications (Element Plus). */
+.app-alert-notification {
+  right: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+}
+
+.app-alert-notification.el-notification-fade-enter-from,
+.app-alert-notification.el-notification-fade-leave-to {
+  transform: translate3d(-50%, -20px, 0);
+  opacity: 0;
+}
+
+.app-alert-notification.el-notification-fade-enter-to,
+.app-alert-notification.el-notification-fade-leave-from {
+  transform: translate3d(-50%, 0, 0);
+  opacity: 1;
+}

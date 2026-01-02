@@ -1,13 +1,20 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { fetchMenuList } from '../../../api/menu'
+import { QuestionFilled } from '@element-plus/icons-vue'
+import AddButton from '../../../components/AddButton.vue'
+import ConfirmButton from '../../../components/ConfirmButton.vue'
+import { addMenu, fetchMenuList, fetchMenuOptions } from '../../../api/menu'
 
 const tableData = ref([])
 const loading = ref(false)
+const optionsLoading = ref(false)
+const submitLoading = ref(false)
 const drawerVisible = ref(false)
 const formRef = ref(null)
+const parentOptions = ref([])
 const formModel = ref({
-  parentId: 0,
+  id: '',
+  parentId: '0000',
   name: '',
   type: 2,
   routeName: '',
@@ -15,11 +22,83 @@ const formModel = ref({
   component: '',
   perm: '',
   visible: true,
-  cache: true,
+  keepAlive: true,
   sort: 1,
   icon: '',
-  selectedIcon: ''
+  pitchIcon: ''
 })
+
+const formRules = {
+  parentId: [{ required: true, message: '父菜单ID不能为空', trigger: 'change' }],
+  name: [{ required: true, message: '菜单名称不能为空', trigger: 'blur' }],
+  type: [{ required: true, message: '菜单类型不能为空', trigger: 'change' }],
+  routeName: [
+    {
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (formModel.value.type === 1 && !value) {
+          callback(new Error('路由名称不能为空'))
+          return
+        }
+        callback()
+      }
+    }
+  ],
+  routePath: [
+    {
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if ((formModel.value.type === 1 || formModel.value.type === 2) && !value) {
+          callback(new Error('路由路径不能为空'))
+          return
+        }
+        callback()
+      }
+    }
+  ],
+  component: [
+    {
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (formModel.value.type === 1 && !value) {
+          callback(new Error('组件路径不能为空'))
+          return
+        }
+        callback()
+      }
+    }
+  ],
+  perm: [
+    {
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (formModel.value.type === 4 && !value) {
+          callback(new Error('权限标识不能为空'))
+          return
+        }
+        callback()
+      }
+    }
+  ],
+  sort: [
+    { required: true, message: '排序不能为空', trigger: 'change' },
+    {
+      trigger: 'change',
+      validator: (rule, value, callback) => {
+        if (value === null || value === undefined || value === '') {
+          callback(new Error('排序不能为空'))
+          return
+        }
+        const numeric = Number(value)
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric > 999) {
+          callback(new Error('排序不正确'))
+          return
+        }
+        callback()
+      }
+    }
+  ]
+}
 
 const normalizeList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -27,6 +106,14 @@ const normalizeList = (payload) => {
   if (Array.isArray(payload?.rows)) return payload.rows
   if (Array.isArray(payload?.list)) return payload.list
   if (Array.isArray(payload?.data?.rows)) return payload.data.rows
+  if (Array.isArray(payload?.data?.list)) return payload.data.list
+  return []
+}
+
+const normalizeOptions = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.list)) return payload.list
+  if (Array.isArray(payload?.data)) return payload.data
   if (Array.isArray(payload?.data?.list)) return payload.data.list
   return []
 }
@@ -43,12 +130,60 @@ const loadMenus = async () => {
   }
 }
 
-const handleAdd = () => {
+const loadParentOptions = async () => {
+  optionsLoading.value = true
+  try {
+    const data = await fetchMenuOptions()
+    parentOptions.value = [
+      { value: '0000', label: '作为一级菜单', children: [] },
+      ...normalizeOptions(data)
+    ]
+  } catch (error) {
+    parentOptions.value = [{ value: '0000', label: '作为一级菜单', children: [] }]
+  } finally {
+    optionsLoading.value = false
+  }
+}
+
+const handleAdd = async () => {
   drawerVisible.value = true
+  await loadParentOptions()
 }
 
 const closeDrawer = () => {
   drawerVisible.value = false
+}
+
+const handleConfirm = async () => {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+  submitLoading.value = true
+  try {
+    const payload = {
+      parentId: formModel.value.parentId,
+      name: formModel.value.name,
+      type: formModel.value.type,
+      routeName: formModel.value.routeName,
+      routePath: formModel.value.routePath,
+      component: formModel.value.component,
+      perm: formModel.value.perm,
+      visible: formModel.value.visible,
+      sort: formModel.value.sort,
+      icon: formModel.value.icon,
+      pitchIcon: formModel.value.pitchIcon,
+      keepAlive: formModel.value.keepAlive
+    }
+    await addMenu(payload)
+    drawerVisible.value = false
+    await loadMenus()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(loadMenus)
@@ -58,7 +193,7 @@ onMounted(loadMenus)
   <section class="menu-page">
     <section class="menu-card">
       <div class="menu-card__toolbar">
-        <el-button type="primary" @click="handleAdd">新增</el-button>
+        <AddButton @click="handleAdd" />
       </div>
       <el-table
         v-loading="loading"
@@ -120,16 +255,35 @@ onMounted(loadMenus)
       class="menu-drawer"
       @close="closeDrawer"
     >
-      <el-form ref="formRef" :model="formModel" label-width="90px" class="menu-form">
-        <el-form-item label="父级菜单">
-          <el-select v-model="formModel.parentId" placeholder="作为一级菜单" class="menu-field">
-            <el-option :value="0" label="作为一级菜单" />
-          </el-select>
+      <template #footer>
+        <div class="menu-drawer__footer">
+          <ConfirmButton :loading="submitLoading" @click="handleConfirm" />
+        </div>
+      </template>
+      <el-form
+        ref="formRef"
+        :model="formModel"
+        :rules="formRules"
+        label-width="90px"
+        class="menu-form"
+      >
+        <el-form-item label="父级菜单" prop="parentId">
+          <el-tree-select
+            v-model="formModel.parentId"
+            :data="parentOptions"
+            :props="{ label: 'label', value: 'value', children: 'children' }"
+            node-key="value"
+            clearable
+            check-strictly
+            :loading="optionsLoading"
+            placeholder="作为一级菜单"
+            class="menu-field"
+          />
         </el-form-item>
-        <el-form-item label="菜单名称" required>
+        <el-form-item label="菜单名称" prop="name" required>
           <el-input v-model="formModel.name" placeholder="请输入菜单名称" class="menu-field" />
         </el-form-item>
-        <el-form-item label="菜单类型" required>
+        <el-form-item label="菜单类型" prop="type" required>
           <el-radio-group v-model="formModel.type">
             <el-radio :label="2">目录</el-radio>
             <el-radio :label="1">菜单</el-radio>
@@ -137,37 +291,70 @@ onMounted(loadMenus)
           </el-radio-group>
         </el-form-item>
         <template v-if="formModel.type === 1">
-          <el-form-item label="路由名称" required>
+          <el-form-item label="路由名称" prop="routeName" required>
+            <template #label>
+              <span class="menu-label">
+                路由名称
+                <el-tooltip content="路由名称（如：User）" placement="top">
+                  <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </span>
+            </template>
             <el-input v-model="formModel.routeName" placeholder="User" class="menu-field" />
           </el-form-item>
-          <el-form-item label="路由路径" required>
+          <el-form-item label="路由路径" prop="routePath" required>
+            <template #label>
+              <span class="menu-label">
+                路由路径
+                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需以 / 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user。" placement="top">
+                  <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </span>
+            </template>
             <el-input v-model="formModel.routePath" placeholder="user" class="menu-field" />
           </el-form-item>
-          <el-form-item label="组件路径" required>
+          <el-form-item label="组件路径" prop="component" required>
+            <template #label>
+              <span class="menu-label">
+                组件路径
+                <el-tooltip content="组件页面完整路径，相对于 src/views/，如 system/user/index，缺省后缀 .vue" placement="top">
+                  <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </span>
+            </template>
             <div class="menu-component">
               <el-input v-model="formModel.component" placeholder="system/user/index" />
             </div>
           </el-form-item>
+      
         </template>
-        <el-form-item v-else-if="formModel.type === 2" label="路由路径" required>
+        <el-form-item v-else-if="formModel.type === 2" label="路由路径" prop="routePath" required>
+          <template #label>
+              <span class="menu-label">
+                路由路径
+                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需以 / 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user。" placement="top">
+                  <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </span>
+            </template>
           <el-input v-model="formModel.routePath" placeholder="system" class="menu-field" />
         </el-form-item>
         <el-form-item v-if="formModel.type === 1" label="缓存页面">
-          <el-radio-group v-model="formModel.cache">
+          <el-radio-group v-model="formModel.keepAlive">
             <el-radio :label="true">开启</el-radio>
             <el-radio :label="false">关闭</el-radio>
           </el-radio-group>
         </el-form-item>
         <template v-if="formModel.type === 4">
-          <el-form-item label="排序ID">
+          <el-form-item label="排序ID" prop="sort">
             <el-input-number v-model="formModel.sort" :min="1" class="menu-number" />
           </el-form-item>
-          <el-form-item label="权限标识">
+          <el-form-item label="权限标识" prop="perm">
             <el-input v-model="formModel.perm" placeholder="sys:user:add" class="menu-field" />
           </el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="排序ID">
+          <el-form-item label="排序ID" prop="sort">
             <el-input-number v-model="formModel.sort" :min="1" class="menu-number" />
           </el-form-item>
           <el-form-item label="图标">
@@ -175,7 +362,7 @@ onMounted(loadMenus)
           </el-form-item>
           <el-form-item label="选中图标">
             <el-input
-              v-model="formModel.selectedIcon"
+              v-model="formModel.pitchIcon"
               placeholder="点击选择图标"
               class="menu-field"
             />
@@ -223,6 +410,12 @@ onMounted(loadMenus)
   padding: 12px 20px 16px;
 }
 
+.menu-drawer__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 20px 12px;
+}
+
 .menu-form {
   display: grid;
   gap: 4px;
@@ -253,5 +446,27 @@ onMounted(loadMenus)
   color: #8c8f99;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.menu-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.menu-label__icon {
+  color: #909399;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menu-form :deep(.el-input__wrapper),
+.menu-form :deep(.el-select__wrapper),
+.menu-form :deep(.el-textarea__inner),
+.menu-form :deep(.el-input-number__decrease),
+.menu-form :deep(.el-input-number__increase),
+.menu-form :deep(.el-input-number__wrapper) {
+  border-radius: 6px;
 }
 </style>

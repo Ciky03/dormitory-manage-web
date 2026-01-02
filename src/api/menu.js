@@ -8,6 +8,10 @@ export function fetchMenuOptions() {
   return request('/system/menu/options', { method: 'GET' })
 }
 
+export function fetchMenuRoutes() {
+  return request('/system/menu/routes', { method: 'GET' })
+}
+
 export function fetchMenuSort(parentId) {
   const query = encodeURIComponent(parentId ?? '')
   return request(`/system/config/sort/menu?parentId=${query}`, { method: 'GET' })

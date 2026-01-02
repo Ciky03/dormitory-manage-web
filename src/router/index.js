@@ -14,7 +14,7 @@ const routes = [
       { path: 'home', name: 'home', component: HomePage, meta: { title: '系统首页' } },
       {
         path: 'system/menu',
-        name: 'system-menu',
+        name: 'Menu',
         component: MenuConfigPage,
         meta: { title: '菜单配置' }
       }

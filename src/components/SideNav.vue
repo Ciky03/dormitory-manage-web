@@ -1,42 +1,70 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { fetchMenuRoutes } from '../api/menu'
 
 const route = useRoute()
+const MENU_ROUTES_KEY = 'menu_routes'
 
-const menuSections = [
-  {
-    title: '宿舍管理',
-    items: [
-      { label: '学生管理', path: '/login' },
-      { label: '宿舍信息', todo: true },
-      { label: '床位分配', todo: true },
-      { label: '维修报修', todo: true }
-    ]
-  },
-  {
-    title: '日常事务',
-    items: [
-      { label: '出入登记', todo: true },
-      { label: '违规记录', todo: true },
-      { label: '考勤统计', todo: true },
-      { label: '费用管理', todo: true }
-    ]
-  },
-  {
-    title: '系统设置',
-    items: [
-      { label: '菜单配置', path: '/system/menu' },
-      { label: '通知公告', todo: true },
-      { label: '角色权限', todo: true },
-      { label: '个人中心', todo: true }
-    ]
-  }
-]
+const menuRoutes = ref([])
 
 const topLevelItems = [{ label: '系统首页', path: '/home' }]
 
 const activePath = computed(() => route.path)
+
+const normalizeRouteList = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.list)) return payload.list
+  if (Array.isArray(payload?.data?.list)) return payload.data.list
+  return []
+}
+
+const buildPath = (parentPath, routePath) => {
+  if (!routePath) return parentPath || '/'
+  if (routePath.startsWith('/')) return routePath
+  if (!parentPath) return `/${routePath}`
+  return `${parentPath.replace(/\/$/, '')}/${routePath}`
+}
+
+const mapRoutes = (nodes, parentPath = '') =>
+  nodes
+    .filter((node) => node?.visible !== false)
+    .map((node) => {
+      const path = buildPath(parentPath, node.routePath)
+      const children = Array.isArray(node.children) ? mapRoutes(node.children, path) : []
+      return {
+        id: node.id,
+        label: node.name,
+        path,
+        children
+      }
+    })
+
+const menuSections = computed(() => mapRoutes(menuRoutes.value))
+
+const loadMenuRoutes = async () => {
+  try {
+    const data = await fetchMenuRoutes()
+    const routes = normalizeRouteList(data)
+    menuRoutes.value = routes
+    localStorage.setItem(MENU_ROUTES_KEY, JSON.stringify(routes))
+  } catch (error) {
+    menuRoutes.value = []
+  }
+}
+
+onMounted(() => {
+  const cached = localStorage.getItem(MENU_ROUTES_KEY)
+  if (cached) {
+    try {
+      menuRoutes.value = JSON.parse(cached)
+    } catch (error) {
+      localStorage.removeItem(MENU_ROUTES_KEY)
+    }
+  }
+  loadMenuRoutes()
+})
 </script>
 
 <template>
@@ -58,20 +86,27 @@ const activePath = computed(() => route.path)
         >
           <span>{{ item.label }}</span>
         </el-menu-item>
-        <el-sub-menu v-for="section in menuSections" :key="section.title" :index="section.title">
-          <template #title>
-            <span class="section-title">{{ section.title }}</span>
-          </template>
+        <template v-for="section in menuSections" :key="section.id || section.label">
           <el-menu-item
-            v-for="item in section.items"
-            :key="item.label"
-            :index="item.path || item.label"
-            :disabled="item.todo"
+            v-if="!section.children.length"
+            :index="section.path || section.label"
+            class="top-level-item"
           >
-            <span>{{ item.label }}</span>
-            <el-tag v-if="item.todo" size="small" type="info" class="todo-tag">TODO</el-tag>
+            <span>{{ section.label }}</span>
           </el-menu-item>
-        </el-sub-menu>
+          <el-sub-menu v-else :index="section.path || section.label">
+            <template #title>
+              <span class="section-title">{{ section.label }}</span>
+            </template>
+            <el-menu-item
+              v-for="item in section.children"
+              :key="item.id || item.label"
+              :index="item.path || item.label"
+            >
+              <span>{{ item.label }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
       </el-menu>
     </div>
   </nav>

@@ -15,10 +15,12 @@ const props = defineProps({
 
 const router = useRouter()
 const tokenKey = import.meta.env.VITE_AUTH_TOKEN_KEY ?? 'token'
+const MENU_ROUTES_KEY = 'menu_routes'
 
 const handleCommand = (command) => {
   if (command === 'logout') {
     localStorage.removeItem(tokenKey)
+    localStorage.removeItem(MENU_ROUTES_KEY)
     router.push({ name: 'login' })
   }
 }

@@ -6,6 +6,26 @@
   background-color: #e9eef5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  --app-primary: #2f5bff;
+  --app-primary-dark: #1f46d9;
+  --app-success: #22c55e;
+  --app-warning: #f59e0b;
+  --app-danger: #ef4444;
+  --app-info: #64748b;
+  --app-border: #e3e8f3;
+  --app-surface: #ffffff;
+  --app-surface-alt: #f5f7fb;
+  --el-color-primary: var(--app-primary);
+  --el-color-primary-light-3: #7d9cff;
+  --el-color-primary-light-5: #a6bbff;
+  --el-color-primary-light-7: #c7d4ff;
+  --el-color-primary-light-9: #edf1ff;
+  --el-color-success: var(--app-success);
+  --el-color-warning: var(--app-warning);
+  --el-color-danger: var(--app-danger);
+  --el-color-info: var(--app-info);
+  --el-border-color: var(--app-border);
+  --el-border-radius-base: 10px;
 }
 
 * {
@@ -25,4 +45,36 @@ a {
 
 #app {
   min-height: 100vh;
+}
+
+.el-table .el-table__header-wrapper th.el-table__cell {
+  background: #f5f7fb;
+  color: #1f2a44;
+  font-weight: 600;
+}
+
+.el-table .el-table__header-wrapper th.el-table__cell .cell {
+  line-height: 1.4;
+}
+
+.el-button {
+  font-weight: 400;
+  border-radius: 10px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--app-primary);
+  --el-button-border-color: var(--app-primary);
+  --el-button-hover-bg-color: var(--app-primary-dark);
+  --el-button-hover-border-color: var(--app-primary-dark);
+}
+
+.el-button--danger {
+  --el-button-bg-color: var(--app-danger);
+  --el-button-border-color: var(--app-danger);
+}
+
+.el-button--warning {
+  --el-button-bg-color: var(--app-warning);
+  --el-button-border-color: var(--app-warning);
 }

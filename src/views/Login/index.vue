@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import heroImage from '../../assets/login-hero.svg'
 import { login } from '../../api/auth'
 import { request } from '../../api/request'
 
@@ -55,7 +54,7 @@ const handleTestApi = async () => {
 
 <template>
   <div class="login-page">
-    <section class="hero" :style="{ backgroundImage: `url(${heroImage})` }">
+    <section class="hero">
       <div class="hero-content">
         <p class="hero-tag">Dormitory Manage</p>
         <h1>宿舍管理平台</h1>

@@ -1,10 +1,12 @@
 ﻿<script setup>
-import { onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import AddButton from '../../../components/AddButton.vue'
+import AddLinkButton from '../../../components/AddLinkButton.vue'
 import CancelButton from '../../../components/CancelButton.vue'
 import ConfirmButton from '../../../components/ConfirmButton.vue'
+import EditLinkButton from '../../../components/EditLinkButton.vue'
 import {
   addMenu,
   deleteMenu,
@@ -19,9 +21,12 @@ import {
 const ROOT_PARENT_ID = import.meta.env.VITE_MENU_ROOT_PARENT_ID ?? '0000'
 
 const tableData = ref([])
+const loadingCount = ref(0)
 const loading = ref(false)
 const optionsLoading = ref(false)
 const submitLoading = ref(false)
+const addLoading = ref(false)
+const editLoading = ref(false)
 const drawerVisible = ref(false)
 const drawerTitle = ref('新增菜单')
 const isEdit = ref(false)
@@ -49,6 +54,66 @@ const defaultForm = () => ({
 })
 
 const formModel = ref(defaultForm())
+
+const fileIconModules = import.meta.glob('../../../assets/menu-icons/*', {
+  eager: true,
+  import: 'default'
+})
+
+const pitchIconModules = import.meta.glob('../../../assets/menu-pitch-icons/*', {
+  eager: true,
+  import: 'default'
+})
+
+const fileIconOptions = computed(() =>
+  Object.keys(fileIconModules).map((path) => {
+    const segments = path.split('/')
+    const filename = segments[segments.length - 1]
+    return { label: filename, value: filename }
+  })
+)
+
+const pitchIconOptions = computed(() =>
+  Object.keys(pitchIconModules).map((path) => {
+    const segments = path.split('/')
+    const filename = segments[segments.length - 1]
+    return { label: filename, value: filename }
+  })
+)
+
+const fileIconMap = computed(
+  () =>
+    new Map(
+      Object.entries(fileIconModules).map(([path, url]) => {
+        const segments = path.split('/')
+        const filename = segments[segments.length - 1]
+        return [filename, url]
+      })
+    )
+)
+
+const pitchIconMap = computed(
+  () =>
+    new Map(
+      Object.entries(pitchIconModules).map(([path, url]) => {
+        const segments = path.split('/')
+        const filename = segments[segments.length - 1]
+        return [filename, url]
+      })
+    )
+)
+
+const selectedFileIcon = computed(() => {
+  const filename = formModel.value.icon
+  if (!filename) return null
+  return { label: filename, value: fileIconMap.value.get(filename) }
+})
+
+const selectedPitchIcon = computed(() => {
+  const filename = formModel.value.pitchIcon
+  if (!filename) return null
+  return { label: filename, value: pitchIconMap.value.get(filename) }
+})
 
 const formRules = {
   parentId: [{ required: true, message: '父菜单ID不能为空', trigger: 'change' }],
@@ -146,96 +211,126 @@ const normalizeForm = (payload) => {
   return {}
 }
 
-const loadMenus = async () => {
-  loading.value = true
+const withLoading = async (task) => {
+  loadingCount.value += 1
   try {
-    const data = await fetchMenuList()
-    tableData.value = normalizeList(data)
-  } catch (error) {
-    tableData.value = []
+    return await task()
   } finally {
-    loading.value = false
+    loadingCount.value -= 1
   }
 }
 
-const loadParentOptions = async () => {
-  optionsLoading.value = true
-  try {
-    const data = await fetchMenuOptions()
-    parentOptions.value = [
-      { value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] },
-      ...normalizeOptions(data)
-    ]
-  } catch (error) {
-    parentOptions.value = [{ value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] }]
-  } finally {
-    optionsLoading.value = false
-  }
-}
+const loadMenus = async () =>
+  withLoading(async () => {
+    loading.value = true
+    try {
+      const data = await fetchMenuList()
+      tableData.value = normalizeList(data)
+    } catch (error) {
+      tableData.value = []
+    } finally {
+      loading.value = false
+    }
+  })
+
+const loadParentOptions = async () =>
+  withLoading(async () => {
+    optionsLoading.value = true
+    try {
+      const data = await fetchMenuOptions()
+      parentOptions.value = [
+        { value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] },
+        ...normalizeOptions(data)
+      ]
+    } catch (error) {
+      parentOptions.value = [{ value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] }]
+    } finally {
+      optionsLoading.value = false
+    }
+  })
 
 const resetForm = () => {
   formModel.value = defaultForm()
   currentMenuId.value = ''
 }
 
-const loadMenuForm = async (menuId) => {
-  const data = await fetchMenuForm(menuId)
-  const payload = normalizeForm(data)
-  formModel.value = {
-    ...defaultForm(),
-    ...payload,
-    parentId: payload.parentId ?? ROOT_PARENT_ID,
-    routeName: payload.routeName ?? '',
-    routePath: payload.routePath ?? '',
-    component: payload.component ?? '',
-    perm: payload.perm ?? '',
-    icon: payload.icon ?? '',
-    pitchIcon: payload.pitchIcon ?? ''
-  }
-}
-
-const applySort = async (parentId) => {
-  try {
-    const data = await fetchMenuSort(parentId)
-    const sortValue = data?.data ?? data?.sort ?? data
-    if (sortValue !== undefined && sortValue !== null && sortValue !== '') {
-      formModel.value.sort = Number(sortValue)
+const loadMenuForm = async (menuId) =>
+  withLoading(async () => {
+    const data = await fetchMenuForm(menuId)
+    const payload = normalizeForm(data)
+    formModel.value = {
+      ...defaultForm(),
+      ...payload,
+      parentId: payload.parentId ?? ROOT_PARENT_ID,
+      routeName: payload.routeName ?? '',
+      routePath: payload.routePath ?? '',
+      component: payload.component ?? '',
+      perm: payload.perm ?? '',
+      icon: payload.icon ?? '',
+      pitchIcon: payload.pitchIcon ?? ''
     }
-  } catch (error) {
-    console.error(error)
-  }
-}
+  })
+
+const applySort = async (parentId) =>
+  withLoading(async () => {
+    try {
+      const data = await fetchMenuSort(parentId)
+      const sortValue = data?.data ?? data?.sort ?? data
+      if (sortValue !== undefined && sortValue !== null && sortValue !== '') {
+        formModel.value.sort = Number(sortValue)
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  })
 const handleAdd = async () => {
-  isEdit.value = false
-  drawerTitle.value = '新增菜单'
-  resetForm()
-  drawerVisible.value = true
-  await loadParentOptions()
-  await applySort(ROOT_PARENT_ID)
-  await formRef.value?.clearValidate()
+  addLoading.value = true
+  try {
+    isEdit.value = false
+    drawerTitle.value = '新增菜单'
+    resetForm()
+    await loadParentOptions()
+    await applySort(ROOT_PARENT_ID)
+    drawerVisible.value = true
+    await formRef.value?.clearValidate()
+  } finally {
+    addLoading.value = false
+  }
 }
 
 const handleRowAdd = async (row) => {
-  isEdit.value = false
-  drawerTitle.value = '新增菜单'
-  resetForm()
-  const parentId = row?.id ?? ROOT_PARENT_ID
-  formModel.value.parentId = parentId
-  drawerVisible.value = true
-  await loadParentOptions()
-  await applySort(parentId)
-  await formRef.value?.clearValidate()
+  addLoading.value = true
+  try {
+    isEdit.value = false
+    drawerTitle.value = '新增菜单'
+    resetForm()
+    const parentId = row?.id ?? ROOT_PARENT_ID
+    formModel.value.parentId = parentId
+    await loadParentOptions()
+    await applySort(parentId)
+    drawerVisible.value = true
+    await formRef.value?.clearValidate()
+  } finally {
+    addLoading.value = false
+  }
 }
 
 const handleEdit = async (row) => {
   if (!row?.id) return
-  isEdit.value = true
-  drawerTitle.value = '编辑菜单'
-  currentMenuId.value = row.id
-  drawerVisible.value = true
-  await loadParentOptions()
-  await loadMenuForm(row.id)
-  await formRef.value?.clearValidate()
+  editLoading.value = true
+  try {
+    isEdit.value = true
+    drawerTitle.value = '编辑菜单'
+    currentMenuId.value = row.id
+    resetForm()
+    await loadParentOptions()
+    await loadMenuForm(row.id)
+    drawerVisible.value = true
+    await nextTick()
+    await formRef.value?.clearValidate()
+  } finally {
+    editLoading.value = false
+  }
 }
 
 const closeDrawer = () => {
@@ -259,21 +354,22 @@ const getActionVerb = () => {
   return actionMode.value === 'disable' ? '禁用' : '启用'
 }
 
-const handleToggleConfirm = async () => {
-  const row = actionRow.value
-  if (!row?.id) {
+const handleToggleConfirm = async () =>
+  withLoading(async () => {
+    const row = actionRow.value
+    if (!row?.id) {
+      actionDialogVisible.value = false
+      return
+    }
+    if (actionMode.value === 'delete') {
+      await deleteMenu(row.id)
+    } else {
+      const visible = actionMode.value === 'enable'
+      await updateMenuVisible(row.id, visible)
+    }
     actionDialogVisible.value = false
-    return
-  }
-  if (actionMode.value === 'delete') {
-    await deleteMenu(row.id)
-  } else {
-    const visible = actionMode.value === 'enable'
-    await updateMenuVisible(row.id, visible)
-  }
-  actionDialogVisible.value = false
-  await loadMenus()
-}
+    await loadMenus()
+  })
 
 const handleConfirm = async () => {
   try {
@@ -282,50 +378,52 @@ const handleConfirm = async () => {
     return
   }
   submitLoading.value = true
-  try {
-    const payload = {
-      parentId: formModel.value.parentId,
-      name: formModel.value.name,
-      type: formModel.value.type,
-      routeName: formModel.value.routeName,
-      routePath: formModel.value.routePath,
-      component: formModel.value.component,
-      perm: formModel.value.perm,
-      visible: formModel.value.visible,
-      sort: formModel.value.sort,
-      icon: formModel.value.icon,
-      pitchIcon: formModel.value.pitchIcon,
-      keepAlive: formModel.value.keepAlive
-    }
-    if (isEdit.value) {
-      const menuId = currentMenuId.value || formModel.value.id
-      if (!menuId) {
-        throw new Error('menuId is required for edit')
+  await withLoading(async () => {
+    try {
+      const payload = {
+        parentId: formModel.value.parentId,
+        name: formModel.value.name,
+        type: formModel.value.type,
+        routeName: formModel.value.routeName,
+        routePath: formModel.value.routePath,
+        component: formModel.value.component,
+        perm: formModel.value.perm,
+        visible: formModel.value.visible,
+        sort: formModel.value.sort,
+        icon: formModel.value.icon,
+        pitchIcon: formModel.value.pitchIcon,
+        keepAlive: formModel.value.keepAlive
       }
-      await editMenu(menuId, payload)
-      ElMessage.success('修改成功')
-    } else {
-      await addMenu(payload)
-      ElMessage.success('新增成功')
+      if (isEdit.value) {
+        const menuId = currentMenuId.value || formModel.value.id
+        if (!menuId) {
+          throw new Error('menuId is required for edit')
+        }
+        await editMenu(menuId, payload)
+        ElMessage.success('修改成功')
+      } else {
+        await addMenu(payload)
+        ElMessage.success('新增成功')
+      }
+      drawerVisible.value = false
+      await loadMenus()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      submitLoading.value = false
     }
-    drawerVisible.value = false
-    await loadMenus()
-  } catch (error) {
-    console.error(error)
-  } finally {
-    submitLoading.value = false
-  }
+  })
 }
 
 onMounted(loadMenus)
 </script>
 
 <template>
-  <div class="menu-card__toolbar">
-    <AddButton @click="handleAdd" />
-  </div>
+  <div class="menu-page" v-loading="loadingCount > 0">
+    <div class="menu-card__toolbar">
+      <AddButton :loading="addLoading" @click="handleAdd" />
+    </div>
   <el-table
-    v-loading="loading"
     :data="tableData"
     row-key="id"
     default-expand-all
@@ -367,8 +465,8 @@ onMounted(loadMenus)
     <el-table-column prop="sort" label="排序ID" width="90" />
     <el-table-column label="操作" width="200" fixed="right">
       <template #default="{ row }">
-        <el-button type="primary" link @click="handleRowAdd(row)">新增</el-button>
-        <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+        <AddLinkButton  @click="handleRowAdd(row)" />
+        <EditLinkButton :loading="editLoading" @click="handleEdit(row)" />
         <el-button
           v-if="row.visible"
           type="warning"
@@ -388,7 +486,7 @@ onMounted(loadMenus)
         <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
       </template>
     </el-table-column>
-  </el-table>
+    </el-table>
     <el-drawer
       v-model="drawerVisible"
       direction="rtl"
@@ -466,7 +564,9 @@ onMounted(loadMenus)
               </span>
             </template>
             <div class="menu-component">
+              <span class="menu-component__prefix">src/views/</span>
               <el-input v-model="formModel.component" placeholder="system/user/index" />
+              <span class="menu-component__suffix">.vue</span>
             </div>
           </el-form-item>
       
@@ -501,14 +601,70 @@ onMounted(loadMenus)
             <el-input-number v-model="formModel.sort" :min="1" class="menu-number" />
           </el-form-item>
           <el-form-item label="图标">
-            <el-input v-model="formModel.icon" placeholder="点击选择图标" class="menu-field" />
+            <el-select
+              v-model="formModel.icon"
+              placeholder="请选择图标"
+              class="menu-field"
+              filterable
+              clearable
+            >
+              <template #prefix>
+                <img
+                  v-if="selectedFileIcon"
+                  :src="selectedFileIcon.value"
+                  :alt="selectedFileIcon.label"
+                  class="menu-select__icon"
+                />
+              </template>
+              <el-option
+                v-for="item in fileIconOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              >
+                <span class="menu-icon-option">
+                  <img
+                    :src="fileIconMap.get(item.value)"
+                    :alt="item.label"
+                    class="menu-icon-option__img"
+                  />
+                  <span>{{ item.label }}</span>
+                </span>
+              </el-option>
+            </el-select>
           </el-form-item>
           <el-form-item label="选中图标">
-            <el-input
+            <el-select
               v-model="formModel.pitchIcon"
-              placeholder="点击选择图标"
+              placeholder="请选择选中图标"
               class="menu-field"
-            />
+              filterable
+              clearable
+            >
+              <template #prefix>
+                <img
+                  v-if="selectedPitchIcon"
+                  :src="selectedPitchIcon.value"
+                  :alt="selectedPitchIcon.label"
+                  class="menu-select__icon"
+                />
+              </template>
+              <el-option
+                v-for="item in pitchIconOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              >
+                <span class="menu-icon-option">
+                  <img
+                    :src="pitchIconMap.get(item.value)"
+                    :alt="item.label"
+                    class="menu-icon-option__img"
+                  />
+                  <span>{{ item.label }}</span>
+                </span>
+              </el-option>
+            </el-select>
           </el-form-item>
         </template>
       </el-form>
@@ -524,6 +680,7 @@ onMounted(loadMenus)
         </div>
       </template>
     </el-dialog>
+  </div>
 </template>
 
 <style scoped>
@@ -569,19 +726,35 @@ onMounted(loadMenus)
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   width: 100%;
 }
 
 .menu-component :deep(.el-input__wrapper) {
   width: 100%;
+  border-radius: 0;
 }
 
 .menu-component__prefix,
 .menu-component__suffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #f5f7fa;
+  border: 1px solid #dcdfe6;
   color: #8c8f99;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.menu-component__prefix {
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.menu-component__suffix {
+  border-left: none;
+  border-radius: 0 6px 6px 0;
 }
 
 .menu-label {
@@ -616,10 +789,23 @@ onMounted(loadMenus)
   justify-content: flex-end;
   gap: 10px;
 }
+
+.menu-icon-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-icon-option__img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.menu-select__icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
 </style>
-
-
-
-
-
-

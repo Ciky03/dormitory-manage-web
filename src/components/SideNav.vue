@@ -8,9 +8,33 @@ const MENU_ROUTES_KEY = 'menu_routes'
 
 const menuRoutes = ref([])
 
-const topLevelItems = [{ label: '首页', path: '/home' }]
+const topLevelItems = [
+  { label: '首页', path: '/home', icon: 'home.svg', pitchIcon: 'home-pitch.svg' }
+]
 
 const activePath = computed(() => route.path)
+
+const menuIconModules = import.meta.glob('../assets/menu-icons/*', {
+  eager: true,
+  import: 'default'
+})
+
+const menuPitchIconModules = import.meta.glob('../assets/menu-pitch-icons/*', {
+  eager: true,
+  import: 'default'
+})
+
+const buildIconMap = (modules) =>
+  new Map(
+    Object.entries(modules).map(([path, url]) => {
+      const segments = path.split('/')
+      const filename = segments[segments.length - 1]
+      return [filename, url]
+    })
+  )
+
+const menuIconMap = computed(() => buildIconMap(menuIconModules))
+const menuPitchIconMap = computed(() => buildIconMap(menuPitchIconModules))
 
 const normalizeRouteList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -37,11 +61,28 @@ const mapRoutes = (nodes, parentPath = '') =>
         id: node.id,
         label: node.name,
         path,
+        icon: node.icon,
+        pitchIcon: node.pitchIcon,
         children
       }
     })
 
 const menuSections = computed(() => mapRoutes(menuRoutes.value))
+
+const isPathActive = (path) => {
+  if (!path) return false
+  return activePath.value === path || activePath.value.startsWith(`${path}/`)
+}
+
+const getIconUrl = (iconName, pitchName, active) => {
+  if (active && pitchName && menuPitchIconMap.value.has(pitchName)) {
+    return menuPitchIconMap.value.get(pitchName)
+  }
+  if (iconName && menuIconMap.value.has(iconName)) {
+    return menuIconMap.value.get(iconName)
+  }
+  return ''
+}
 
 const loadMenuRoutes = async () => {
   try {
@@ -84,7 +125,16 @@ onMounted(() => {
           :index="item.path"
           class="top-level-item"
         >
-          <span>{{ item.label }}</span>
+        <span class="section-title">
+          <span class="menu-icon" aria-hidden="true">
+            <img
+              v-if="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+              :src="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+              :alt="item.label"
+            />
+          </span>
+          {{ item.label }}
+        </span>
         </el-menu-item>
         <template v-for="section in menuSections" :key="section.id || section.label">
           <el-menu-item
@@ -92,17 +142,40 @@ onMounted(() => {
             :index="section.path || section.label"
             class="top-level-item"
           >
+            <span class="menu-icon" aria-hidden="true">
+              <img
+                v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                :alt="section.label"
+              />
+            </span>
             <span>{{ section.label }}</span>
           </el-menu-item>
           <el-sub-menu v-else :index="section.path || section.label">
             <template #title>
-              <span class="section-title">{{ section.label }}</span>
+              <span class="section-title">
+                <span class="menu-icon" aria-hidden="true">
+                  <img
+                    v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                    :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                    :alt="section.label"
+                  />
+                </span>
+                {{ section.label }}
+              </span>
             </template>
             <el-menu-item
               v-for="item in section.children"
               :key="item.id || item.label"
               :index="item.path || item.label"
             >
+              <span class="menu-icon" aria-hidden="true">
+                <img
+                  v-if="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+                  :src="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+                  :alt="item.label"
+                />
+              </span>
               <span>{{ item.label }}</span>
             </el-menu-item>
           </el-sub-menu>
@@ -130,6 +203,9 @@ onMounted(() => {
 
 .section-title {
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .menu :deep(.el-sub-menu__title) {
@@ -154,6 +230,22 @@ onMounted(() => {
   border-radius: 4px;
   margin: 2px 8px;
   position: relative;
+}
+
+.menu-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 18px;
+}
+
+.menu-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .menu :deep(.el-menu-item.is-active) {

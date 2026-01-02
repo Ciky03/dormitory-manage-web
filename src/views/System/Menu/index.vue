@@ -1,20 +1,40 @@
-<script setup>
+﻿<script setup>
 import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import AddButton from '../../../components/AddButton.vue'
+import CancelButton from '../../../components/CancelButton.vue'
 import ConfirmButton from '../../../components/ConfirmButton.vue'
-import { addMenu, fetchMenuList, fetchMenuOptions } from '../../../api/menu'
+import {
+  addMenu,
+  deleteMenu,
+  editMenu,
+  fetchMenuForm,
+  fetchMenuList,
+  fetchMenuOptions,
+  fetchMenuSort,
+  updateMenuVisible
+} from '../../../api/menu'
+
+const ROOT_PARENT_ID = import.meta.env.VITE_MENU_ROOT_PARENT_ID ?? '0000'
 
 const tableData = ref([])
 const loading = ref(false)
 const optionsLoading = ref(false)
 const submitLoading = ref(false)
 const drawerVisible = ref(false)
+const drawerTitle = ref('新增菜单')
+const isEdit = ref(false)
+const currentMenuId = ref('')
+const actionDialogVisible = ref(false)
+const actionMode = ref('disable')
+const actionRow = ref(null)
 const formRef = ref(null)
 const parentOptions = ref([])
-const formModel = ref({
+
+const defaultForm = () => ({
   id: '',
-  parentId: '0000',
+  parentId: ROOT_PARENT_ID,
   name: '',
   type: 2,
   routeName: '',
@@ -27,6 +47,8 @@ const formModel = ref({
   icon: '',
   pitchIcon: ''
 })
+
+const formModel = ref(defaultForm())
 
 const formRules = {
   parentId: [{ required: true, message: '父菜单ID不能为空', trigger: 'change' }],
@@ -118,6 +140,12 @@ const normalizeOptions = (payload) => {
   return []
 }
 
+const normalizeForm = (payload) => {
+  if (payload?.data && typeof payload.data === 'object') return payload.data
+  if (payload && typeof payload === 'object') return payload
+  return {}
+}
+
 const loadMenus = async () => {
   loading.value = true
   try {
@@ -135,23 +163,116 @@ const loadParentOptions = async () => {
   try {
     const data = await fetchMenuOptions()
     parentOptions.value = [
-      { value: '0000', label: '作为一级菜单', children: [] },
+      { value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] },
       ...normalizeOptions(data)
     ]
   } catch (error) {
-    parentOptions.value = [{ value: '0000', label: '作为一级菜单', children: [] }]
+    parentOptions.value = [{ value: ROOT_PARENT_ID, label: '作为一级菜单', children: [] }]
   } finally {
     optionsLoading.value = false
   }
 }
 
+const resetForm = () => {
+  formModel.value = defaultForm()
+  currentMenuId.value = ''
+}
+
+const loadMenuForm = async (menuId) => {
+  const data = await fetchMenuForm(menuId)
+  const payload = normalizeForm(data)
+  formModel.value = {
+    ...defaultForm(),
+    ...payload,
+    parentId: payload.parentId ?? ROOT_PARENT_ID,
+    routeName: payload.routeName ?? '',
+    routePath: payload.routePath ?? '',
+    component: payload.component ?? '',
+    perm: payload.perm ?? '',
+    icon: payload.icon ?? '',
+    pitchIcon: payload.pitchIcon ?? ''
+  }
+}
+
+const applySort = async (parentId) => {
+  try {
+    const data = await fetchMenuSort(parentId)
+    const sortValue = data?.data ?? data?.sort ?? data
+    if (sortValue !== undefined && sortValue !== null && sortValue !== '') {
+      formModel.value.sort = Number(sortValue)
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
 const handleAdd = async () => {
+  isEdit.value = false
+  drawerTitle.value = '新增菜单'
+  resetForm()
   drawerVisible.value = true
   await loadParentOptions()
+  await applySort(ROOT_PARENT_ID)
+  await formRef.value?.clearValidate()
+}
+
+const handleRowAdd = async (row) => {
+  isEdit.value = false
+  drawerTitle.value = '新增菜单'
+  resetForm()
+  const parentId = row?.id ?? ROOT_PARENT_ID
+  formModel.value.parentId = parentId
+  drawerVisible.value = true
+  await loadParentOptions()
+  await applySort(parentId)
+  await formRef.value?.clearValidate()
+}
+
+const handleEdit = async (row) => {
+  if (!row?.id) return
+  isEdit.value = true
+  drawerTitle.value = '编辑菜单'
+  currentMenuId.value = row.id
+  drawerVisible.value = true
+  await loadParentOptions()
+  await loadMenuForm(row.id)
+  await formRef.value?.clearValidate()
 }
 
 const closeDrawer = () => {
   drawerVisible.value = false
+}
+
+const openToggleDialog = (row) => {
+  actionRow.value = row || null
+  actionMode.value = row?.visible ? 'disable' : 'enable'
+  actionDialogVisible.value = true
+}
+
+const openDeleteDialog = (row) => {
+  actionRow.value = row || null
+  actionMode.value = 'delete'
+  actionDialogVisible.value = true
+}
+
+const getActionVerb = () => {
+  if (actionMode.value === 'delete') return '删除'
+  return actionMode.value === 'disable' ? '禁用' : '启用'
+}
+
+const handleToggleConfirm = async () => {
+  const row = actionRow.value
+  if (!row?.id) {
+    actionDialogVisible.value = false
+    return
+  }
+  if (actionMode.value === 'delete') {
+    await deleteMenu(row.id)
+  } else {
+    const visible = actionMode.value === 'enable'
+    await updateMenuVisible(row.id, visible)
+  }
+  actionDialogVisible.value = false
+  await loadMenus()
 }
 
 const handleConfirm = async () => {
@@ -176,7 +297,17 @@ const handleConfirm = async () => {
       pitchIcon: formModel.value.pitchIcon,
       keepAlive: formModel.value.keepAlive
     }
-    await addMenu(payload)
+    if (isEdit.value) {
+      const menuId = currentMenuId.value || formModel.value.id
+      if (!menuId) {
+        throw new Error('menuId is required for edit')
+      }
+      await editMenu(menuId, payload)
+      ElMessage.success('修改成功')
+    } else {
+      await addMenu(payload)
+      ElMessage.success('新增成功')
+    }
     drawerVisible.value = false
     await loadMenus()
   } catch (error) {
@@ -231,17 +362,32 @@ onMounted(loadMenus)
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
-              {{ row.visible ? '启用' : '已禁用' }}
+              {{ row.visible ? '已启用' : '已禁用' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序ID" width="90" />
         <el-table-column label="操作" width="200" fixed="right">
-          <template #default>
-            <el-button type="primary" link>新增</el-button>
-            <el-button type="primary" link>编辑</el-button>
-            <el-button type="warning" link>禁用</el-button>
-            <el-button type="danger" link>删除</el-button>
+          <template #default="{ row }">
+            <el-button type="primary" link @click="handleRowAdd(row)">新增</el-button>
+            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button
+              v-if="row.visible"
+              type="warning"
+              link
+              @click="openToggleDialog(row)"
+            >
+              禁用
+            </el-button>
+            <el-button
+              v-else
+              type="warning"
+              link
+              @click="openToggleDialog(row)"
+            >
+              启用
+            </el-button>
+            <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -250,7 +396,7 @@ onMounted(loadMenus)
       v-model="drawerVisible"
       direction="rtl"
       size="480px"
-      title="新增菜单"
+      :title="drawerTitle"
       :with-header="true"
       class="menu-drawer"
       @close="closeDrawer"
@@ -295,7 +441,7 @@ onMounted(loadMenus)
             <template #label>
               <span class="menu-label">
                 路由名称
-                <el-tooltip content="路由名称（如：User）" placement="top">
+                <el-tooltip content="路由名称（如：User)" placement="top">
                   <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </span>
@@ -306,7 +452,7 @@ onMounted(loadMenus)
             <template #label>
               <span class="menu-label">
                 路由路径
-                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需以 / 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user。" placement="top">
+                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需要/ 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user" placement="top">
                   <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </span>
@@ -332,7 +478,7 @@ onMounted(loadMenus)
           <template #label>
               <span class="menu-label">
                 路由路径
-                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需以 / 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user。" placement="top">
+                <el-tooltip content="定义应用中不同页面对应的 URL 路径，目录需要/ 开头，菜单项不用。例如：系统管理目录 /system，系统管理下的用户管理菜单 user" placement="top">
                   <el-icon class="menu-label__icon"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </span>
@@ -370,6 +516,17 @@ onMounted(loadMenus)
         </template>
       </el-form>
     </el-drawer>
+    <el-dialog v-model="actionDialogVisible" title="提示" width="360px" center align-center>
+      <p class="menu-dialog__text">
+        您确定要{{ getActionVerb() }}【{{ actionRow?.name || '' }}】吗?
+      </p>
+      <template #footer>
+        <div class="menu-dialog__footer">
+          <CancelButton @click="actionDialogVisible = false" />
+          <ConfirmButton @click="handleToggleConfirm" />
+        </div>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -469,4 +626,22 @@ onMounted(loadMenus)
 .menu-form :deep(.el-input-number__wrapper) {
   border-radius: 6px;
 }
+
+.menu-dialog__text {
+  margin: 0;
+  color: #303133;
+}
+
+.menu-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 </style>
+
+
+
+
+
+
+

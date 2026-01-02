@@ -93,18 +93,21 @@ onMounted(loadMenus)
 <style scoped>
 .menu-page {
   display: grid;
-  gap: 18px;
-  min-width: 0;
+  gap: 12px;
+  padding: 12px;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .menu-table {
-  border-radius: 12px;
+  border-radius: 6px;
   width: 100%;
 }
 
 .menu-card {
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 16px 18px 18px;
   box-shadow: 0 18px 40px rgba(22, 33, 60, 0.08);
   overflow: hidden;

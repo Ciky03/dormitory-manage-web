@@ -101,7 +101,7 @@ const handleTabChange = (name) => {
 }
 
 .app-content {
-  padding: 36px 40px;
+  padding: 10px 10px;
   flex: 1 1 auto;
   overflow: auto;
 }

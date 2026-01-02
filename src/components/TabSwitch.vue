@@ -48,7 +48,7 @@ const handleTabRemove = (name) => {
 }
 
 .tabs {
-  padding: 0 8px;
+  padding: 0;
 }
 
 .tabs :deep(.el-tabs__header) {
@@ -87,5 +87,9 @@ const handleTabRemove = (name) => {
 
 .tabs :deep(.el-tabs__nav) {
   border: none;
+}
+
+.tabs :deep(.el-tabs__item + .el-tabs__item)::before {
+  display: none;
 }
 </style>

@@ -99,6 +99,8 @@ const activePath = computed(() => route.path)
 
 .menu :deep(.el-sub-menu__title) {
   padding-left: 14px;
+  height: 46px;
+  line-height: 46px;
 }
 
 .menu :deep(.el-menu-item.top-level-item) {
@@ -111,8 +113,8 @@ const activePath = computed(() => route.path)
 }
 
 .menu :deep(.el-menu-item) {
-  height: 38px;
-  line-height: 38px;
+  height: 46px;
+  line-height: 46px;
   padding-left: 22px;
   border-radius: 4px;
   margin: 2px 8px;

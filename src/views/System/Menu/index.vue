@@ -4,6 +4,22 @@ import { fetchMenuList } from '../../../api/menu'
 
 const tableData = ref([])
 const loading = ref(false)
+const drawerVisible = ref(false)
+const formRef = ref(null)
+const formModel = ref({
+  parentId: 0,
+  name: '',
+  type: 2,
+  routeName: '',
+  routePath: '',
+  component: '',
+  perm: '',
+  visible: true,
+  cache: true,
+  sort: 1,
+  icon: '',
+  selectedIcon: ''
+})
 
 const normalizeList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -27,6 +43,14 @@ const loadMenus = async () => {
   }
 }
 
+const handleAdd = () => {
+  drawerVisible.value = true
+}
+
+const closeDrawer = () => {
+  drawerVisible.value = false
+}
+
 onMounted(loadMenus)
 </script>
 
@@ -34,7 +58,7 @@ onMounted(loadMenus)
   <section class="menu-page">
     <section class="menu-card">
       <div class="menu-card__toolbar">
-        <el-button type="primary">新增</el-button>
+        <el-button type="primary" @click="handleAdd">新增</el-button>
       </div>
       <el-table
         v-loading="loading"
@@ -72,7 +96,7 @@ onMounted(loadMenus)
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
-              {{ row.visible ? '启用中' : '已禁用' }}
+              {{ row.visible ? '启用' : '已禁用' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -87,6 +111,78 @@ onMounted(loadMenus)
         </el-table-column>
       </el-table>
     </section>
+    <el-drawer
+      v-model="drawerVisible"
+      direction="rtl"
+      size="480px"
+      title="新增菜单"
+      :with-header="true"
+      class="menu-drawer"
+      @close="closeDrawer"
+    >
+      <el-form ref="formRef" :model="formModel" label-width="90px" class="menu-form">
+        <el-form-item label="父级菜单">
+          <el-select v-model="formModel.parentId" placeholder="作为一级菜单" class="menu-field">
+            <el-option :value="0" label="作为一级菜单" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="菜单名称" required>
+          <el-input v-model="formModel.name" placeholder="请输入菜单名称" class="menu-field" />
+        </el-form-item>
+        <el-form-item label="菜单类型" required>
+          <el-radio-group v-model="formModel.type">
+            <el-radio :label="2">目录</el-radio>
+            <el-radio :label="1">菜单</el-radio>
+            <el-radio :label="4">按钮</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="formModel.type === 1">
+          <el-form-item label="路由名称" required>
+            <el-input v-model="formModel.routeName" placeholder="User" class="menu-field" />
+          </el-form-item>
+          <el-form-item label="路由路径" required>
+            <el-input v-model="formModel.routePath" placeholder="user" class="menu-field" />
+          </el-form-item>
+          <el-form-item label="组件路径" required>
+            <div class="menu-component">
+              <el-input v-model="formModel.component" placeholder="system/user/index" />
+            </div>
+          </el-form-item>
+        </template>
+        <el-form-item v-else-if="formModel.type === 2" label="路由路径" required>
+          <el-input v-model="formModel.routePath" placeholder="system" class="menu-field" />
+        </el-form-item>
+        <el-form-item v-if="formModel.type === 1" label="缓存页面">
+          <el-radio-group v-model="formModel.cache">
+            <el-radio :label="true">开启</el-radio>
+            <el-radio :label="false">关闭</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="formModel.type === 4">
+          <el-form-item label="排序ID">
+            <el-input-number v-model="formModel.sort" :min="1" class="menu-number" />
+          </el-form-item>
+          <el-form-item label="权限标识">
+            <el-input v-model="formModel.perm" placeholder="sys:user:add" class="menu-field" />
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item label="排序ID">
+            <el-input-number v-model="formModel.sort" :min="1" class="menu-number" />
+          </el-form-item>
+          <el-form-item label="图标">
+            <el-input v-model="formModel.icon" placeholder="点击选择图标" class="menu-field" />
+          </el-form-item>
+          <el-form-item label="选中图标">
+            <el-input
+              v-model="formModel.selectedIcon"
+              placeholder="点击选择图标"
+              class="menu-field"
+            />
+          </el-form-item>
+        </template>
+      </el-form>
+    </el-drawer>
   </section>
 </template>
 
@@ -121,5 +217,41 @@ onMounted(loadMenus)
 
 .menu-card :deep(.el-table__body-wrapper) {
   overflow-x: auto;
+}
+
+.menu-drawer :deep(.el-drawer__body) {
+  padding: 12px 20px 16px;
+}
+
+.menu-form {
+  display: grid;
+  gap: 4px;
+}
+
+.menu-field {
+  width: 100%;
+}
+
+.menu-number {
+  width: 120px;
+}
+
+.menu-component {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.menu-component :deep(.el-input__wrapper) {
+  width: 100%;
+}
+
+.menu-component__prefix,
+.menu-component__suffix {
+  color: #8c8f99;
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginPage from '../views/Login/index.vue'
 import HomePage from '../views/Home/index.vue'
 import MenuConfigPage from '../views/System/Menu/index.vue'
+import RolePage from '../views/System/Role/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -17,6 +18,12 @@ const routes = [
         name: 'Menu',
         component: MenuConfigPage,
         meta: { title: '菜单配置' }
+      },
+      {
+        path: 'system/role',
+        name: 'Role',
+        component: RolePage,
+        meta: { title: '角色管理' }
       }
     ]
   }

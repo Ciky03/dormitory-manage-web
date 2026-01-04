@@ -2,11 +2,11 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
-import AddButton from '../../../components/AddButton.vue'
-import AddLinkButton from '../../../components/AddLinkButton.vue'
-import CancelButton from '../../../components/CancelButton.vue'
-import ConfirmButton from '../../../components/ConfirmButton.vue'
-import EditLinkButton from '../../../components/EditLinkButton.vue'
+import AddButton from '../../../components/button/AddButton.vue'
+import AddLinkButton from '../../../components/button/AddLinkButton.vue'
+import CancelButton from '../../../components/button/CancelButton.vue'
+import ConfirmButton from '../../../components/button/ConfirmButton.vue'
+import EditLinkButton from '../../../components/button/EditLinkButton.vue'
 import {
   addMenu,
   deleteMenu,

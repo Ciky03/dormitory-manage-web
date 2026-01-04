@@ -1,9 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SideNav from '../components/SideNav.vue'
-import TabSwitch from '../components/TabSwitch.vue'
-import TopBar from '../components/TopBar.vue'
+import SideNav from '../components/nav/SideNav.vue'
+import TabSwitch from '../components/nav/TabSwitch.vue'
+import TopBar from '../components/nav/TopBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -107,14 +107,14 @@ const handleTabChange = (name) => {
 .app-content {
   padding: 10px 10px;
   flex: 1 1 auto;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .app-page {
   display: grid;
   gap: 12px;
   padding: 12px;
-  min-height: 100%;
+  height: 92%;
   width: 100%;
   box-sizing: border-box;
 }

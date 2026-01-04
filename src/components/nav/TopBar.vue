@@ -1,7 +1,7 @@
 <script setup>
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import topicIcon from '../assets/topic.svg'
+import topicIcon from '../../assets/topic.svg'
 
 const props = defineProps({
   userName: {

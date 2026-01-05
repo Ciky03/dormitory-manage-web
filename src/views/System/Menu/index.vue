@@ -1,13 +1,13 @@
 ﻿<script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import AddButton from '../../../components/button/AddButton.vue'
 import AddLinkButton from '../../../components/button/AddLinkButton.vue'
-import CancelButton from '../../../components/button/CancelButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
 import EditLinkButton from '../../../components/button/EditLinkButton.vue'
 import List from '../../../components/list/List.vue'
+import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
+import { showError, showSuccess } from '../../../util/message/message'
 import {
   addMenu,
   deleteMenu,
@@ -362,14 +362,20 @@ const handleToggleConfirm = async () =>
       actionDialogVisible.value = false
       return
     }
-    if (actionMode.value === 'delete') {
-      await deleteMenu(row.id)
-    } else {
-      const visible = actionMode.value === 'enable'
-      await updateMenuVisible(row.id, visible)
+    try {
+      if (actionMode.value === 'delete') {
+        await deleteMenu(row.id)
+        showSuccess('删除成功')
+      } else {
+        const visible = actionMode.value === 'enable'
+        await updateMenuVisible(row.id, visible)
+        showSuccess(visible ? '启用成功' : '禁用成功')
+      }
+      actionDialogVisible.value = false
+      await loadMenus()
+    } catch (error) {
+      showError(error)
     }
-    actionDialogVisible.value = false
-    await loadMenus()
   })
 
 const handleConfirm = async () => {
@@ -401,15 +407,15 @@ const handleConfirm = async () => {
           throw new Error('menuId is required for edit')
         }
         await editMenu(menuId, payload)
-        ElMessage.success('修改成功')
+        showSuccess('修改成功')
       } else {
         await addMenu(payload)
-        ElMessage.success('新增成功')
+        showSuccess('新增成功')
       }
       drawerVisible.value = false
       await loadMenus()
     } catch (error) {
-      console.error(error)
+      showError(error)
     } finally {
       submitLoading.value = false
     }
@@ -470,7 +476,7 @@ onMounted(loadMenus)
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <AddLinkButton @click="handleRowAdd(row)" />
-            <EditLinkButton :loading="editLoading" @click="handleEdit(row)" />
+            <EditLinkButton @click="handleEdit(row)" />
             <el-button
               v-if="row.visible"
               type="warning"
@@ -674,17 +680,11 @@ onMounted(loadMenus)
         </template>
       </el-form>
     </el-drawer>
-    <el-dialog v-model="actionDialogVisible" title="提示" width="360px" center align-center>
-      <p class="menu-dialog__text">
-        您确定要{{ getActionVerb() }}【{{ actionRow?.name || '' }}】吗?
-      </p>
-      <template #footer>
-        <div class="menu-dialog__footer">
-          <CancelButton @click="actionDialogVisible = false" />
-          <ConfirmButton @click="handleToggleConfirm" />
-        </div>
-      </template>
-    </el-dialog>
+    <ActionConfirmDialog
+      v-model="actionDialogVisible"
+      :message="`您确定要${getActionVerb()}【${actionRow?.name || ''}】吗?`"
+      @confirm="handleToggleConfirm"
+    />
   </div>
 </template>
 
@@ -802,16 +802,6 @@ onMounted(loadMenus)
   border-radius: 6px;
 }
 
-.menu-dialog__text {
-  margin: 0;
-  color: #303133;
-}
-
-.menu-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
 
 .menu-icon-option {
   display: inline-flex;

@@ -14,3 +14,23 @@ export function fetchRolePage(params = {}) {
   const path = query ? `/system/role/list/page?${query}` : '/system/role/list/page'
   return request(path, { method: 'GET' })
 }
+
+export function addRole(payload) {
+  return request('/system/role/add', { method: 'POST', body: payload })
+}
+
+export function fetchRoleForm(roleId) {
+  return request(`/system/role/form/${roleId}`, { method: 'GET' })
+}
+
+export function editRole(roleId, payload) {
+  return request(`/system/role/edit/${roleId}`, { method: 'PUT', body: payload })
+}
+
+export function updateRoleStatus(roleId, status) {
+  return request(`/system/role/edit/${roleId}/${status}`, { method: 'PUT' })
+}
+
+export function deleteRole(ids) {
+  return request(`/system/role/del/${ids}`, { method: 'DELETE' })
+}

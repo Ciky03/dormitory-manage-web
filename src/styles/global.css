@@ -59,9 +59,20 @@ a {
   font-weight: 600;
 }
 
+.app-message {
+  border-radius: 6px;
+}
+
 .el-table .el-table__header-wrapper th.el-table__cell .cell {
   line-height: 1.4;
 }
+
+/* 全局 Element Plus Dialog 圆角 */
+.el-dialog {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 
 .el-button {
   font-weight: 400;

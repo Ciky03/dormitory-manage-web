@@ -2,93 +2,145 @@
   import { computed, ref, watch } from 'vue'
   import AddButton from '../../../components/button/AddButton.vue'
   import QueryButton from '../../../components/button/QueryButton.vue'
+  import ResetButton from '../../../components/button/ResetButton.vue'
   import SearchInput from '../../../components/list/SearchInput.vue'
   import StatusSelect from '../../../components/list/StatusSelect.vue'
   import PageList from '../../../components/list/pageList.vue'
+  import { fetchRolePage } from '../../../api/role'
   
-  const keyword = ref('')
+  const keywords = ref('')
   const status = ref('all')
   const currentPage = ref(1)
   const pageSize = ref(10)
   
   const statusOptions = [
     { label: '全部', value: 'all' },
-    { label: '启用中', value: 'enabled' },
-    { label: '已禁用', value: 'disabled' }
+    { label: '启用中', value: 'true' },
+    { label: '已禁用', value: 'false' }
   ]
   
-  const roleData = ref([
-    { id: 1, name: '系统管理员', desc: '', sort: 1, members: 45, enabled: true },
-    { id: 2, name: '系统IT管理员', desc: '', sort: 2, members: 7, enabled: true },
-    { id: 3, name: '市场专用', desc: '', sort: 3, members: 1, enabled: true },
-    { id: 4, name: '财务专用', desc: '', sort: 4, members: 2, enabled: true },
-    { id: 5, name: '采购专用', desc: '', sort: 5, members: 1, enabled: true },
-    { id: 6, name: '综管专用', desc: '', sort: 6, members: 2, enabled: true },
-    { id: 7, name: '销售专用', desc: '', sort: 7, members: 2, enabled: true },
-    { id: 8, name: '工程专用', desc: '', sort: 8, members: 4, enabled: true },
-    { id: 9, name: '测试人员', desc: '系统专业测试人员使用', sort: 9, members: 4, enabled: true },
-    { id: 10, name: '综管部意见流程角色', desc: '', sort: 10, members: 1, enabled: true },
-    { id: 11, name: '访客角色', desc: '访客可访问部分页面', sort: 11, members: 2, enabled: false },
-    { id: 10, name: '综管部意见流程角色', desc: '', sort: 10, members: 1, enabled: true },
-    { id: 11, name: '访客角色', desc: '访客可访问部分页面', sort: 11, members: 2, enabled: false },
-    { id: 10, name: '综管部意见流程角色', desc: '', sort: 10, members: 1, enabled: true },
-    { id: 11, name: '访客角色', desc: '访客可访问部分页面', sort: 11, members: 2, enabled: false }
-  ])
+  const roleData = ref([])
+  const total = ref(0)
+  const keywordTimer = ref(null)
+  const suppressAutoQuery = ref(false)
+  const loading = ref(false)
   
-  const filteredRoles = computed(() => {
-    const query = keyword.value.trim()
-    return roleData.value.filter((item) => {
-      const matchKeyword =
-        !query || item.name.includes(query) || (item.desc && item.desc.includes(query))
-      const matchStatus =
-        status.value === 'all' ||
-        (status.value === 'enabled' && item.enabled) ||
-        (status.value === 'disabled' && !item.enabled)
-      return matchKeyword && matchStatus
-    })
-  })
-  
-  const total = computed(() => filteredRoles.value.length)
-  
-  const tableData = computed(() => {
-    const start = (currentPage.value - 1) * pageSize.value
-    return filteredRoles.value.slice(start, start + pageSize.value)
-  })
+  const tableData = computed(() => roleData.value)
+
+  const normalizePage = (payload) => {
+    const data = payload?.data ?? payload ?? {}
+    const list =
+      data?.list ??
+      data?.rows ??
+      data?.records ??
+      data?.data ??
+      (Array.isArray(data) ? data : [])
+    const normalizedList = Array.isArray(list) ? list : []
+    const normalizedTotal =
+      Number(data?.total ?? data?.count ?? normalizedList.length) || 0
+    return { list: normalizedList, total: normalizedTotal }
+  }
+
+  const loadRoles = async () => {
+    const query = keywords.value.trim()
+    const payload = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (query) {
+      payload.keywords = query
+    }
+    if (status.value !== 'all') {
+      payload.status = status.value
+    }
+    loading.value = true
+    try {
+      const data = await fetchRolePage(payload)
+      const normalized = normalizePage(data)
+      roleData.value = normalized.list
+      total.value = normalized.total
+    } catch (error) {
+      roleData.value = []
+      total.value = 0
+    } finally {
+      loading.value = false
+    }
+  }
   
   const handleQuery = () => {
+    if (currentPage.value === 1) {
+      loadRoles()
+      return
+    }
     currentPage.value = 1
   }
   
   const handleReset = () => {
-    keyword.value = ''
+    suppressAutoQuery.value = true
+    if (keywordTimer.value) {
+      clearTimeout(keywordTimer.value)
+      keywordTimer.value = null
+    }
+    keywords.value = ''
     status.value = 'all'
-    currentPage.value = 1
+    Promise.resolve().then(() => {
+      suppressAutoQuery.value = false
+    })
   }
   
-  watch([keyword, status], () => {
+  watch(keywords, () => {
+    if (suppressAutoQuery.value) {
+      return
+    }
+    if (keywordTimer.value) {
+      clearTimeout(keywordTimer.value)
+    }
+    keywordTimer.value = setTimeout(() => {
+      if (currentPage.value === 1) {
+        loadRoles()
+        return
+      }
+      currentPage.value = 1
+    }, 400)
+  })
+
+  watch(status, () => {
+    if (suppressAutoQuery.value) {
+      return
+    }
+    if (currentPage.value === 1) {
+      loadRoles()
+      return
+    }
     currentPage.value = 1
   })
+
+  watch([currentPage, pageSize], () => {
+    loadRoles()
+  }, { immediate: true })
   </script>
   
   <template>
-    <section class="role-page">
+    <section class="role-page" v-loading="loading">
       <div class="role-card role-card--search">
         <div class="role-search">
           <SearchInput
-            v-model="keyword"
+            v-model="keywords"
             label="关键词"
             placeholder="角色名称/角色描述"
-            width="520px"
+            width="100%"
+            @enter="handleQuery"
           />
           <StatusSelect
             v-model="status"
             label="启用状态"
             placeholder="全部"
+            width="240px"
             :options="statusOptions"
           />
           <div class="role-search__actions">
             <QueryButton @click="handleQuery" />
-            <el-button @click="handleReset">重置条件</el-button>
+            <ResetButton @click="handleReset" />
           </div>
         </div>
       </div>
@@ -106,15 +158,15 @@
         :table-props="{ border: true }"
         table-height="100%"
       >
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="name" label="角色名称" min-width="160" />
-        <el-table-column prop="desc" label="角色描述" min-width="280" />
+        <el-table-column type="index" label="序号" width="60" align="center"/>
+        <el-table-column prop="name" label="角色名称" min-width="140" />
+        <el-table-column prop="code" label="角色编码" min-width="100" />
+        <el-table-column prop="remark" label="角色描述" min-width="280" />
         <el-table-column prop="sort" label="排序ID" width="90" />
-        <el-table-column prop="members" label="角色成员（个）" width="140" />
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="row.enabled ? 'success' : 'info'" effect="light" class="role-tag">
-              {{ row.enabled ? '启用中' : '已禁用' }}
+            <el-tag :type="row.status ? 'success' : 'info'" effect="light" class="role-tag">
+              {{ row.status ? '启用中' : '已禁用' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -123,7 +175,7 @@
             <el-button link type="primary">编辑</el-button>
             <el-button link type="primary">分配权限</el-button>
             <el-button link type="warning">
-              {{ row.enabled ? '禁用' : '启用' }}
+              {{ row.status ? '禁用' : '启用' }}
             </el-button>
             <el-button link type="danger">删除</el-button>
           </template>
@@ -158,12 +210,16 @@
     padding: 2px 10px;
   }
   
-  .role-search {
-    display: grid;
-    grid-template-columns: minmax(320px, 1.6fr) minmax(220px, 0.8fr) auto;
-    align-items: center;
-    gap: 16px;
-  }
+.role-search {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.role-search > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
   
   .role-search__actions {
     display: flex;
@@ -176,11 +232,11 @@
     justify-content: flex-start;
   }
   
-  @media (max-width: 1024px) {
-    .role-search {
-      grid-template-columns: 1fr;
-      justify-items: stretch;
-    }
+@media (max-width: 1024px) {
+  .role-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
     .role-search__actions {
       justify-content: flex-start;
     }

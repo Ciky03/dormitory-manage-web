@@ -1,4 +1,6 @@
 <script setup>
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+
 defineProps({
   total: {
     type: Number,
@@ -36,22 +38,36 @@ const handleSizeChange = (value) => {
 const handleCurrentChange = (value) => {
   emit('update:currentPage', value)
 }
+
+const paginationLocale = {
+  ...zhCn,
+  el: {
+    ...zhCn.el,
+    pagination: {
+      ...zhCn.el.pagination,
+      goto: '前往',
+      pagesize: '条/\页'
+    }
+  }
+}
 </script>
 
 <template>
   <div class="pagination-bar">
     <span class="pagination-bar__total">共 {{ total }} 条</span>
-    <el-pagination
-      :total="total"
-      :current-page="currentPage"
-      :page-size="pageSize"
-      :page-sizes="pageSizes"
-      :background="background"
-      :disabled="disabled"
-      layout="sizes, prev, pager, next, jumper"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
-    />
+    <el-config-provider :locale="paginationLocale">
+      <el-pagination
+        :total="total"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :page-sizes="pageSizes"
+        :background="background"
+        :disabled="disabled"
+        layout="sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </el-config-provider>
   </div>
 </template>
 
@@ -67,5 +83,10 @@ const handleCurrentChange = (value) => {
 .pagination-bar__total {
   white-space: nowrap;
   font-size: 14px;
+}
+
+.pagination-bar :deep(.el-input__wrapper),
+.pagination-bar :deep(.el-select__wrapper) {
+  border-radius: 6px;
 }
 </style>

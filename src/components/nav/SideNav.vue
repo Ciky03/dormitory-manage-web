@@ -14,12 +14,12 @@ const topLevelItems = [
 
 const activePath = computed(() => route.path)
 
-const menuIconModules = import.meta.glob('../assets/menu-icons/*', {
+const menuIconModules = import.meta.glob('../../assets/menu-icons/*', {
   eager: true,
   import: 'default'
 })
 
-const menuPitchIconModules = import.meta.glob('../assets/menu-pitch-icons/*', {
+const menuPitchIconModules = import.meta.glob('../../assets/menu-pitch-icons/*', {
   eager: true,
   import: 'default'
 })

@@ -22,7 +22,7 @@ defineProps({
   }
 })
 
-defineEmits(['update:modelValue'])
+defineEmits(['update:modelValue', 'enter'])
 </script>
 
 <template>
@@ -34,6 +34,7 @@ defineEmits(['update:modelValue'])
       :clearable="clearable"
       class="search-input__control"
       @update:model-value="$emit('update:modelValue', $event)"
+      @keyup.enter="$emit('enter')"
     />
   </div>
 </template>

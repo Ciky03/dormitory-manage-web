@@ -7,6 +7,7 @@ import AddLinkButton from '../../../components/button/AddLinkButton.vue'
 import CancelButton from '../../../components/button/CancelButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
 import EditLinkButton from '../../../components/button/EditLinkButton.vue'
+import List from '../../../components/list/List.vue'
 import {
   addMenu,
   deleteMenu,
@@ -423,70 +424,74 @@ onMounted(loadMenus)
     <div class="menu-card__toolbar">
       <AddButton :loading="addLoading" @click="handleAdd" />
     </div>
-  <el-table
-    :data="tableData"
-    row-key="id"
-    default-expand-all
-    border
-    class="menu-table"
-  >
-    <el-table-column prop="name" label="菜单名称" min-width="180" fixed="left" />
-    <el-table-column label="类型" width="90">
-      <template #default="{ row }">
-        <el-tag
-          :type="row.type === 2 ? 'warning' : row.type === 1 ? 'success' : 'info'"
-          effect="light"
-        >
-          {{
-            row.type === 1
-              ? '菜单'
-              : row.type === 2
-                ? '目录'
-                : row.type === 3
-                  ? '外链'
-                  : row.type === 4
-                    ? '按钮'
-                    : '-'
-          }}
-        </el-tag>
-      </template>
-    </el-table-column>
-    <el-table-column prop="routeName" label="路由名称" min-width="140" />
-    <el-table-column prop="routePath" label="路由路径" min-width="160" />
-    <el-table-column prop="component" label="组件路径" min-width="220" />
-    <el-table-column prop="perm" label="权限标识" min-width="120" />
-    <el-table-column label="状态" width="90">
-      <template #default="{ row }">
-        <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
-          {{ row.visible ? '已启用' : '已禁用' }}
-        </el-tag>
-      </template>
-    </el-table-column>
-    <el-table-column prop="sort" label="排序ID" width="90" />
-    <el-table-column label="操作" width="200" fixed="right">
-      <template #default="{ row }">
-        <AddLinkButton  @click="handleRowAdd(row)" />
-        <EditLinkButton :loading="editLoading" @click="handleEdit(row)" />
-        <el-button
-          v-if="row.visible"
-          type="warning"
-          link
-          @click="openToggleDialog(row)"
-        >
-          禁用
-        </el-button>
-        <el-button
-          v-else
-          type="warning"
-          link
-          @click="openToggleDialog(row)"
-        >
-          启用
-        </el-button>
-        <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
-      </template>
-    </el-table-column>
-    </el-table>
+    <!-- 关键：给表格区域一个可计算的剩余高度 -->
+    <div class="menu-table__wrap">
+      <List
+        :data="tableData"
+        :table-props="{
+          rowKey: 'id',
+          defaultExpandAll: true,
+          class: 'menu-table'
+        }"
+      >
+        <el-table-column prop="name" label="菜单名称" min-width="180" fixed="left" />
+        <el-table-column label="类型" width="90">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.type === 2 ? 'warning' : row.type === 1 ? 'success' : 'info'"
+              effect="light"
+            >
+              {{
+                row.type === 1
+                  ? '菜单'
+                  : row.type === 2
+                    ? '目录'
+                    : row.type === 3
+                      ? '外链'
+                      : row.type === 4
+                        ? '按钮'
+                        : '-'
+              }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="routeName" label="路由名称" min-width="140" />
+        <el-table-column prop="routePath" label="路由路径" min-width="160" />
+        <el-table-column prop="component" label="组件路径" min-width="220" />
+        <el-table-column prop="perm" label="权限标识" min-width="120" />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.visible ? 'success' : 'info'" effect="light">
+              {{ row.visible ? '已启用' : '已禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sort" label="排序ID" width="90" />
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <AddLinkButton @click="handleRowAdd(row)" />
+            <EditLinkButton :loading="editLoading" @click="handleEdit(row)" />
+            <el-button
+              v-if="row.visible"
+              type="warning"
+              link
+              @click="openToggleDialog(row)"
+            >
+              禁用
+            </el-button>
+            <el-button
+              v-else
+              type="warning"
+              link
+              @click="openToggleDialog(row)"
+            >
+              启用
+            </el-button>
+            <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </List>
+    </div>
     <el-drawer
       v-model="drawerVisible"
       direction="rtl"
@@ -684,6 +689,17 @@ onMounted(loadMenus)
 </template>
 
 <style scoped>
+
+.menu-page {
+  display: flex;
+  flex-direction: column;
+
+  /* 这里用 100%：前提是你的外层布局（layout/content）给了高度。
+     如果外层没有高度，你可以把这里改成：height: 100vh; 直接解决。 */
+  height: 100%;
+  min-height: 0;
+}
+
 .menu-table {
   border-radius: 6px;
   width: 100%;
@@ -693,6 +709,13 @@ onMounted(loadMenus)
   display: flex;
   justify-content: flex-start;
   margin-bottom: 12px;
+}
+
+/* 关键：让表格区域吃掉剩余高度 */
+.menu-table__wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .menu-table :deep(.el-table__body-wrapper) {

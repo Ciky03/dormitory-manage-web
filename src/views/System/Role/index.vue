@@ -2,9 +2,9 @@
   import { computed, ref, watch } from 'vue'
   import AddButton from '../../../components/button/AddButton.vue'
   import QueryButton from '../../../components/button/QueryButton.vue'
-  import SearchInput from '../../../components/SearchInput.vue'
-  import StatusSelect from '../../../components/StatusSelect.vue'
-  import PageList from '../../../components/page/pageList.vue'
+  import SearchInput from '../../../components/list/SearchInput.vue'
+  import StatusSelect from '../../../components/list/StatusSelect.vue'
+  import PageList from '../../../components/list/pageList.vue'
   
   const keyword = ref('')
   const status = ref('all')

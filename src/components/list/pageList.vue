@@ -49,6 +49,9 @@
             :height="tableHeight"
             v-bind="tableProps"
           >
+            <template #empty>
+              <el-empty />
+            </template>
             <!-- ✅ 让父组件把列定义以 slot 形式传进来 -->
             <slot />
           </el-table>

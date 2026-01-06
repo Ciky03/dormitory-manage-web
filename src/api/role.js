@@ -34,3 +34,14 @@ export function updateRoleStatus(roleId, status) {
 export function deleteRole(ids) {
   return request(`/system/role/del/${ids}`, { method: 'DELETE' })
 }
+
+export function fetchRoleMenuIds(roleId) {
+  return request(`/system/role/menuIds/${roleId}`, { method: 'GET' })
+}
+
+export function updateRoleMenus(roleId, menuIds = []) {
+  return request(`/system/role/menus/${roleId}`, {
+    method: 'PUT',
+    body: menuIds
+  })
+}

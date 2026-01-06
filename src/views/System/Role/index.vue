@@ -1,6 +1,7 @@
 <script setup>
   import { computed, nextTick, ref, watch } from 'vue'
   import AddButton from '../../../components/button/AddButton.vue'
+  import CancelButton from '../../../components/button/CancelButton.vue'
   import EditLinkButton from '../../../components/button/EditLinkButton.vue'
   import QueryButton from '../../../components/button/QueryButton.vue'
   import ConfirmButton from '../../../components/button/ConfirmButton.vue'
@@ -9,7 +10,8 @@
   import StatusSelect from '../../../components/list/StatusSelect.vue'
   import PageList from '../../../components/list/pageList.vue'
   import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
-  import { addRole, deleteRole, editRole, fetchRoleForm, fetchRolePage, updateRoleStatus } from '../../../api/role'
+  import { addRole, deleteRole, editRole, fetchRoleForm, fetchRoleMenuIds, fetchRolePage, updateRoleMenus, updateRoleStatus } from '../../../api/role'
+  import { fetchMenuOptions } from '../../../api/menu'
   import { showError, showSuccess } from '../../../util/message/message'
   
   const keywords = ref('')
@@ -51,6 +53,43 @@
   const actionDialogVisible = ref(false)
   const actionMode = ref('disable')
   const actionRow = ref(null)
+  const permissionDrawerVisible = ref(false)
+  const permissionRoleId = ref('')
+  const permissionRoleName = ref('')
+  const permissionLoading = ref(false)
+  const permissionSubmitLoading = ref(false)
+  const permissionKeyword = ref('')
+  const permissionCheckedKeys = ref([])
+  const menuOptions = ref([])
+  const permissionTreeRef = ref(null)
+  const permissionTreeProps = { label: 'label', children: 'children' }
+  const permissionTitle = computed(() => {
+    const name = permissionRoleName.value
+    return name
+      ? `为【${name}】分配权限`
+      : '分配权限'
+  })
+
+  const filterMenuOptions = (options, keyword) => {
+    if (!Array.isArray(options)) return []
+    return options
+      .map((option) => {
+        const label = String(option?.label ?? '')
+        const children = filterMenuOptions(option?.children ?? [], keyword)
+        const matched = label.toLowerCase().includes(keyword)
+        if (matched || children.length > 0) {
+          return { ...option, children }
+        }
+        return null
+      })
+      .filter(Boolean)
+  }
+
+  const filteredMenuOptions = computed(() => {
+    const keyword = permissionKeyword.value.trim().toLowerCase()
+    if (!keyword) return menuOptions.value
+    return filterMenuOptions(menuOptions.value, keyword)
+  })
   
   const tableData = computed(() => roleData.value)
 
@@ -72,6 +111,36 @@
     const normalizedTotal =
       Number(data?.total ?? data?.count ?? normalizedList.length) || 0
     return { list: normalizedList, total: normalizedTotal }
+  }
+
+  const normalizeOptions = (payload) => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.data)) return payload.data
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    return []
+  }
+
+  const normalizeMenuIds = (payload) => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.data)) return payload.data
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    return []
+  }
+
+  const applyPermissionCheckedKeys = async (keys) => {
+    permissionCheckedKeys.value = Array.isArray(keys) ? keys : []
+    await nextTick()
+    permissionTreeRef.value?.setCheckedKeys(permissionCheckedKeys.value)
+  }
+
+  const getPermissionMenuIds = () => {
+    const tree = permissionTreeRef.value
+    if (!tree) return []
+    const checked = tree.getCheckedKeys(false) ?? []
+    const halfChecked = tree.getHalfCheckedKeys?.() ?? []
+    return Array.from(new Set([...checked, ...halfChecked]))
   }
 
   const loadRoles = async () => {
@@ -192,6 +261,60 @@
       submitLoading.value = false
     }
   }
+
+  const openPermissionDrawer = async (row) => {
+    if (!row?.id) return
+    permissionRoleId.value = row.id
+    permissionRoleName.value = row.name ?? ''
+    permissionDrawerVisible.value = true
+    permissionKeyword.value = ''
+    permissionLoading.value = true
+    menuOptions.value = []
+    permissionCheckedKeys.value = []
+    try {
+      const data = await fetchMenuOptions()
+      menuOptions.value = normalizeOptions(data)
+    } catch (error) {
+      menuOptions.value = []
+      showError(error, '\u52a0\u8f7d\u83dc\u5355\u5931\u8d25')
+      permissionLoading.value = false
+      return
+    }
+
+    try {
+      const menuIds = await fetchRoleMenuIds(row.id)
+      const ids = normalizeMenuIds(menuIds)
+      await applyPermissionCheckedKeys(ids)
+    } catch (error) {
+      permissionCheckedKeys.value = []
+      showError(error, '\u52a0\u8f7d\u6743\u9650\u5931\u8d25')
+    } finally {
+      permissionLoading.value = false
+    }
+  }
+
+  const closePermissionDrawer = () => {
+    permissionDrawerVisible.value = false
+    permissionRoleId.value = ''
+  }
+
+  const handlePermissionConfirm = async () => {
+    if (!permissionRoleId.value) {
+      permissionDrawerVisible.value = false
+      return
+    }
+    const menuIds = getPermissionMenuIds()
+    permissionSubmitLoading.value = true
+    try {
+      await updateRoleMenus(permissionRoleId.value, menuIds)
+      showSuccess('分配权限成功')
+      permissionDrawerVisible.value = false
+    } catch (error) {
+      showError(error, '分配权限失败')
+    } finally {
+      permissionSubmitLoading.value = false
+    }
+  }
   
   const openToggleDialog = (row) => {
     actionRow.value = row || null
@@ -285,6 +408,12 @@
   watch([currentPage, pageSize], () => {
     loadRoles()
   }, { immediate: true })
+
+  watch([filteredMenuOptions, permissionCheckedKeys], async () => {
+    if (!permissionDrawerVisible.value) return
+    await nextTick()
+    permissionTreeRef.value?.setCheckedKeys(permissionCheckedKeys.value)
+  })
   </script>
   
   <template>
@@ -340,7 +469,7 @@
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <EditLinkButton @click="handleEdit(row)" />
-            <el-button link type="primary">分配权限</el-button>
+            <el-button link type="primary" @click="openPermissionDrawer(row)">分配权限</el-button>
             <el-button link type="warning" @click="openToggleDialog(row)">
               {{ row.status ? '禁用' : '启用' }}
             </el-button>
@@ -390,6 +519,41 @@
           </div>
         </template>
       </el-dialog>
+
+      <el-drawer
+        v-model="permissionDrawerVisible"
+        direction="rtl"
+        size="420px"
+        :title="permissionTitle"
+        class="role-permission-drawer"
+        @close="closePermissionDrawer"
+      >
+        <template #footer>
+          <div class="role-permission-footer">
+            <CancelButton @click="closePermissionDrawer" />
+            <ConfirmButton :loading="permissionSubmitLoading" @click="handlePermissionConfirm" />
+          </div>
+        </template>
+        <div class="role-permission-body" v-loading="permissionLoading">
+          <div class="role-permission-search">
+            <SearchInput
+              v-model="permissionKeyword"
+              placeholder="搜索菜单"
+              width="100%"
+            />
+          </div>
+          <el-tree
+            ref="permissionTreeRef"
+            :data="filteredMenuOptions"
+            :props="permissionTreeProps"
+            node-key="value"
+            show-checkbox
+            check-strictly
+            default-expand-all
+            class="role-permission-tree"
+          />
+        </div>
+      </el-drawer>
 
       <ActionConfirmDialog
         v-model="actionDialogVisible"
@@ -460,6 +624,29 @@
 .role-dialog__footer {
   display: flex;
   justify-content: flex-end;
+}
+
+:deep(.role-permission-drawer .el-drawer__body){
+  padding: 0px 20px 16px;
+}
+
+.role-permission-body {
+  min-height: 100%;
+}
+
+.role-permission-tree {
+  width: 100%;
+}
+
+.role-permission-search {
+  margin-bottom: 12px;
+}
+
+.role-permission-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 12px;
 }
 
   

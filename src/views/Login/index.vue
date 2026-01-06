@@ -2,7 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../../api/auth'
+import { fetchCurrentUser } from '../../api/user'
 import { request } from '../../api/request'
+import { setPermissions } from '../../util/permission/permission'
+import { setCurrentUser } from '../../util/user'
 
 const form = ref({
   username: '',
@@ -29,6 +32,14 @@ const handleSubmit = async () => {
       password: form.value.password
     })
     statusMessage.value = data?.message || '登录成功'
+    try {
+      const currentUser = await fetchCurrentUser()
+      const storedUser = setCurrentUser(currentUser)
+      setPermissions(storedUser?.perms ?? [])
+    } catch (error) {
+      setCurrentUser({})
+      setPermissions([])
+    }
     await router.push({ name: 'home' })
   } catch (error) {
     errorMessage.value = error?.message || '登录失败，请稍后再试'

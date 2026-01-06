@@ -1,7 +1,10 @@
 <script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import topicIcon from '../../assets/topic.svg'
+import { clearPermissions } from '../../util/permission/permission'
+import { clearCurrentUser, getCurrentUser } from '../../util/user'
 
 const props = defineProps({
   userName: {
@@ -15,6 +18,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const currentUser = ref(getCurrentUser())
 const tokenKey = import.meta.env.VITE_AUTH_TOKEN_KEY ?? 'token'
 const MENU_ROUTES_KEY = 'menu_routes'
 
@@ -22,9 +26,30 @@ const handleCommand = (command) => {
   if (command === 'logout') {
     localStorage.removeItem(tokenKey)
     localStorage.removeItem(MENU_ROUTES_KEY)
+    clearCurrentUser()
+    clearPermissions()
     router.push({ name: 'login' })
   }
 }
+
+const syncUser = () => {
+  currentUser.value = getCurrentUser()
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('user-updated', syncUser)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('user-updated', syncUser)
+  }
+})
+
+const displayName = computed(() => currentUser.value?.realName || props.userName)
+const displayAvatar = computed(() => currentUser.value?.avatar || props.avatarUrl)
 </script>
 
 <template>
@@ -34,12 +59,12 @@ const handleCommand = (command) => {
       <el-text class="brand-text">宿舍管理平台</el-text>
     </div>
     <el-space :size="10" alignment="center" class="user-info">
-      <el-avatar :src="props.avatarUrl" :alt="props.userName" class="avatar">
-        {{ props.userName.slice(0, 1) }}
+      <el-avatar :src="displayAvatar" :alt="displayName" class="avatar">
+        {{ displayName.slice(0, 1) }}
       </el-avatar>
       <el-dropdown trigger="click" @command="handleCommand">
         <span class="user-dropdown">
-          <el-text class="user-name">{{ props.userName }}</el-text>
+          <el-text class="user-name">{{ displayName }}</el-text>
           <el-icon class="user-caret"><ArrowDown /></el-icon>
         </span>
         <template #dropdown>

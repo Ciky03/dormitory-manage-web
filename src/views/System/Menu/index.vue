@@ -299,16 +299,21 @@ const handleAdd = async () => {
   }
 }
 
-const handleRowAdd = async (row) => {
-  addLoading.value = true
-  try {
-    isEdit.value = false
-    drawerTitle.value = '新增菜单'
-    resetForm()
-    const parentId = row?.id ?? ROOT_PARENT_ID
-    formModel.value.parentId = parentId
-    await loadParentOptions()
-    await applySort(parentId)
+  const handleRowAdd = async (row) => {
+    addLoading.value = true
+    try {
+      isEdit.value = false
+      drawerTitle.value = '新增菜单'
+      resetForm()
+      if (row?.type === 2) {
+        formModel.value.type = 1
+      } else if (row?.type === 1) {
+        formModel.value.type = 4
+      }
+      const parentId = row?.id ?? ROOT_PARENT_ID
+      formModel.value.parentId = parentId
+      await loadParentOptions()
+      await applySort(parentId)
     drawerVisible.value = true
     await formRef.value?.clearValidate()
   } finally {
@@ -428,7 +433,7 @@ onMounted(loadMenus)
 <template>
   <div class="menu-page" v-loading="loadingCount > 0">
     <div class="menu-card__toolbar">
-      <AddButton :loading="addLoading" @click="handleAdd" />
+      <AddButton v-permission="'sys:menu:add'" :loading="addLoading" @click="handleAdd" />
     </div>
     <!-- 关键：给表格区域一个可计算的剩余高度 -->
     <div class="menu-table__wrap">
@@ -475,13 +480,14 @@ onMounted(loadMenus)
         <el-table-column prop="sort" label="排序ID" width="90" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <AddLinkButton @click="handleRowAdd(row)" />
-            <EditLinkButton @click="handleEdit(row)" />
+            <AddLinkButton v-permission="'sys:menu:add'" @click="handleRowAdd(row)" />
+            <EditLinkButton v-permission="'sys:menu:edit'" @click="handleEdit(row)" />
             <el-button
               v-if="row.visible"
               type="warning"
               link
               @click="openToggleDialog(row)"
+              v-permission="'sys:menu:edit'"
             >
               禁用
             </el-button>
@@ -493,7 +499,7 @@ onMounted(loadMenus)
             >
               启用
             </el-button>
-            <el-button type="danger" link @click="openDeleteDialog(row)">删除</el-button>
+            <el-button v-permission="'sys:menu:del'" type="danger" link @click="openDeleteDialog(row)">删除</el-button>
           </template>
         </el-table-column>
       </List>

@@ -4,5 +4,8 @@ import router from './router'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './styles/global.css'
+import permission from './directives/permission'
 
-createApp(App).use(router).use(ElementPlus).mount('#app')
+const app = createApp(App)
+app.directive('permission', permission)
+app.use(router).use(ElementPlus).mount('#app')

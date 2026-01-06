@@ -51,9 +51,12 @@ const buildPath = (parentPath, routePath) => {
   return `${parentPath.replace(/\/$/, '')}/${routePath}`
 }
 
+const isDirectory = (node) => node?.type === 2 || node?.type === '2'
+const isButton = (node) => node?.type === 4 || node?.type === '4'
+
 const mapRoutes = (nodes, parentPath = '') =>
   nodes
-    .filter((node) => node?.visible !== false)
+    .filter((node) => node?.visible !== false && !isButton(node))
     .map((node) => {
       const path = buildPath(parentPath, node.routePath)
       const children = Array.isArray(node.children) ? mapRoutes(node.children, path) : []
@@ -63,6 +66,8 @@ const mapRoutes = (nodes, parentPath = '') =>
         path,
         icon: node.icon,
         pitchIcon: node.pitchIcon,
+        type: node.type,
+        isDirectory: isDirectory(node),
         children
       }
     })
@@ -138,7 +143,7 @@ onMounted(() => {
         </el-menu-item>
         <template v-for="section in menuSections" :key="section.id || section.label">
           <el-menu-item
-            v-if="!section.children.length"
+            v-if="!section.isDirectory"
             :index="section.path || section.label"
             class="top-level-item"
           >

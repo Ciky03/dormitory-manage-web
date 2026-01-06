@@ -2,10 +2,12 @@
   import { computed, nextTick, ref, watch } from 'vue'
   import AddButton from '../../../components/button/AddButton.vue'
   import CancelButton from '../../../components/button/CancelButton.vue'
+  import DeleteLinkButton from '../../../components/button/DeleteLinkButton.vue'
   import EditLinkButton from '../../../components/button/EditLinkButton.vue'
   import QueryButton from '../../../components/button/QueryButton.vue'
   import ConfirmButton from '../../../components/button/ConfirmButton.vue'
   import ResetButton from '../../../components/button/ResetButton.vue'
+  import StatusLinkButton from '../../../components/button/StatusLinkButton.vue'
   import SearchInput from '../../../components/list/SearchInput.vue'
   import StatusSelect from '../../../components/list/StatusSelect.vue'
   import PageList from '../../../components/list/pageList.vue'
@@ -442,7 +444,7 @@
       </div>
   
       <div class="role-toolbar">
-        <AddButton @click="handleAdd" />
+        <AddButton v-permission="'sys:role:add'" @click="handleAdd" />
       </div>
   
       <!-- ✅ 用通用组件替换 role-card--table -->
@@ -468,12 +470,21 @@
         </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <EditLinkButton @click="handleEdit(row)" />
-            <el-button link type="primary" @click="openPermissionDrawer(row)">分配权限</el-button>
-            <el-button link type="warning" @click="openToggleDialog(row)">
-              {{ row.status ? '禁用' : '启用' }}
+            <EditLinkButton v-permission="'sys:role:edit'" @click="handleEdit(row)" />
+            <el-button
+              v-permission="'sys:role:perm'"
+              link
+              type="primary"
+              @click="openPermissionDrawer(row)"
+            >
+              分配权限
             </el-button>
-            <el-button link type="danger" @click="openDeleteDialog(row)">删除</el-button>
+            <StatusLinkButton
+              v-permission="'sys:role:edit'"
+              :enabled="row.status"
+              @click="openToggleDialog(row)"
+            />
+            <DeleteLinkButton v-permission="'sys:role:del'" @click="openDeleteDialog(row)" />
           </template>
         </el-table-column>
       </PageList>

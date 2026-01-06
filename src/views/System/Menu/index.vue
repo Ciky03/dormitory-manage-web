@@ -4,7 +4,9 @@ import { QuestionFilled } from '@element-plus/icons-vue'
 import AddButton from '../../../components/button/AddButton.vue'
 import AddLinkButton from '../../../components/button/AddLinkButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
+import DeleteLinkButton from '../../../components/button/DeleteLinkButton.vue'
 import EditLinkButton from '../../../components/button/EditLinkButton.vue'
+import StatusLinkButton from '../../../components/button/StatusLinkButton.vue'
 import List from '../../../components/list/List.vue'
 import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
 import { showError, showSuccess } from '../../../util/message/message'
@@ -482,24 +484,18 @@ onMounted(loadMenus)
           <template #default="{ row }">
             <AddLinkButton v-permission="'sys:menu:add'" @click="handleRowAdd(row)" />
             <EditLinkButton v-permission="'sys:menu:edit'" @click="handleEdit(row)" />
-            <el-button
+            <StatusLinkButton
               v-if="row.visible"
-              type="warning"
-              link
-              @click="openToggleDialog(row)"
               v-permission="'sys:menu:edit'"
-            >
-              禁用
-            </el-button>
-            <el-button
-              v-else
-              type="warning"
-              link
+              :enabled="true"
               @click="openToggleDialog(row)"
-            >
-              启用
-            </el-button>
-            <el-button v-permission="'sys:menu:del'" type="danger" link @click="openDeleteDialog(row)">删除</el-button>
+            />
+            <StatusLinkButton
+              v-else
+              :enabled="false"
+              @click="openToggleDialog(row)"
+            />
+            <DeleteLinkButton v-permission="'sys:menu:del'" @click="openDeleteDialog(row)" />
           </template>
         </el-table-column>
       </List>

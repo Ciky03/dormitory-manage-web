@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request } from '../request'
 
 const buildQuery = (params = {}) => {
   const query = new URLSearchParams()

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchMenuRoutes } from '../../api/menu'
+import { fetchMenuRoutes } from '../../api/system/menu'
 
 const route = useRoute()
 const MENU_ROUTES_KEY = 'menu_routes'

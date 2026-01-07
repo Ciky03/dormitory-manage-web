@@ -12,8 +12,8 @@
   import StatusSelect from '../../../components/list/StatusSelect.vue'
   import PageList from '../../../components/list/pageList.vue'
   import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
-  import { addRole, deleteRole, editRole, fetchRoleForm, fetchRoleMenuIds, fetchRolePage, updateRoleMenus, updateRoleStatus } from '../../../api/role'
-  import { fetchMenuOptions } from '../../../api/menu'
+  import { addRole, deleteRole, editRole, fetchRoleForm, fetchRoleMenuIds, fetchRolePage, updateRoleMenus, updateRoleStatus } from '../../../api/system/role'
+  import { fetchMenuOptions } from '../../../api/system/menu'
   import { showError, showSuccess } from '../../../util/message/message'
   
   const keywords = ref('')

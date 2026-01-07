@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../../api/auth'
-import { fetchCurrentUser } from '../../api/user'
+import { fetchCurrentUser } from '../../api/system/user'
 import { request } from '../../api/request'
 import { setPermissions } from '../../util/permission/permission'
 import { setCurrentUser } from '../../util/user'

@@ -19,7 +19,7 @@ import {
   fetchMenuOptions,
   fetchMenuSort,
   updateMenuVisible
-} from '../../../api/menu'
+} from '../../../api/system/menu'
 
 const ROOT_PARENT_ID = import.meta.env.VITE_MENU_ROOT_PARENT_ID ?? '0000'
 

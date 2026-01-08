@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SideNav from '../components/nav/SideNav.vue'
 import TabSwitch from '../components/nav/TabSwitch.vue'
@@ -49,6 +49,24 @@ const handleTabChange = (name) => {
     router.push(name)
   }
 }
+
+const handleExternalTabClose = (event) => {
+  const name = event?.detail?.path
+  if (!name) return
+  handleTabClose(name)
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('tab-close', handleExternalTabClose)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('tab-close', handleExternalTabClose)
+  }
+})
 </script>
 
 <template>

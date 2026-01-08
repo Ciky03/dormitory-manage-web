@@ -4,6 +4,7 @@ import HomePage from '../views/Home/index.vue'
 import MenuConfigPage from '../views/System/Menu/index.vue'
 import RolePage from '../views/System/Role/index.vue'
 import UserPage from '../views/System/User/index.vue'
+import PasswordPage from '../views/Person/Password/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -31,6 +32,12 @@ const routes = [
         name: 'User',
         component: UserPage,
         meta: { title: '用户管理' }
+      },
+      {
+        path: 'person/password',
+        name: 'PersonPassword',
+        component: PasswordPage,
+        meta: { title: '修改密码' }
       }
     ]
   }

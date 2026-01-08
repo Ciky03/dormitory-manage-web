@@ -29,6 +29,10 @@ const handleCommand = (command) => {
     clearCurrentUser()
     clearPermissions()
     router.push({ name: 'login' })
+    return
+  }
+  if (command === 'change-password') {
+    router.push({ name: 'PersonPassword' })
   }
 }
 
@@ -69,7 +73,9 @@ const displayAvatar = computed(() => currentUser.value?.avatar || props.avatarUr
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="change-password">修改密码</el-dropdown-item>
+            <el-dropdown-item command="change-password">
+              修改密码
+            </el-dropdown-item>
             <el-dropdown-item command="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>

@@ -25,7 +25,7 @@
   --el-color-danger: var(--app-danger);
   --el-color-info: var(--app-info);
   --el-border-color: var(--app-border);
-  --el-border-radius-base: 10px;
+  --el-border-radius-base: 6px;
 }
 
 * {

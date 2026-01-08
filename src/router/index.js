@@ -3,6 +3,7 @@ import LoginPage from '../views/Login/index.vue'
 import HomePage from '../views/Home/index.vue'
 import MenuConfigPage from '../views/System/Menu/index.vue'
 import RolePage from '../views/System/Role/index.vue'
+import UserPage from '../views/System/User/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -24,6 +25,12 @@ const routes = [
         name: 'Role',
         component: RolePage,
         meta: { title: '角色管理' }
+      },
+      {
+        path: 'system/user',
+        name: 'User',
+        component: UserPage,
+        meta: { title: '用户管理' }
       }
     ]
   }

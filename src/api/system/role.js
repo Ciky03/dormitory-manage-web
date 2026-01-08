@@ -15,6 +15,10 @@ export function fetchRolePage(params = {}) {
   return request(path, { method: 'GET' })
 }
 
+export function fetchRoleOptions() {
+  return request('/system/role/options', { method: 'GET' })
+}
+
 export function addRole(payload) {
   return request('/system/role/add', { method: 'POST', body: payload })
 }

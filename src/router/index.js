@@ -6,6 +6,7 @@ import RolePage from '../views/System/Role/index.vue'
 import UserPage from '../views/System/User/index.vue'
 import PasswordPage from '../views/Person/Password/index.vue'
 import AvatarPage from '../views/Person/Avatar/index.vue'
+import BindWxPage from '../views/Person/BindWx/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -45,6 +46,12 @@ const routes = [
         name: 'PersonAvatar',
         component: AvatarPage,
         meta: { title: '修改头像' }
+      },
+      {
+        path: 'person/bindwx',
+        name: 'PersonBindWx',
+        component: BindWxPage,
+        meta: { title: '绑定微信' }
       }
     ]
   }

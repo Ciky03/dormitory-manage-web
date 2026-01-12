@@ -1,8 +1,10 @@
 ﻿<script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { fetchWxQrCodeInfo, fetchWxQrCodeStatus } from '../../../api/person/bindwx'
+import { fetchCurrentUser } from '../../../api/system/user'
 import wxLogo from '../../../assets/wxLogo.svg'
 import { showError } from '../../../util/message/message'
+import { setCurrentUser } from '../../../util/user'
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -10,11 +12,12 @@ const successMessage = ref('')
 const qrUrl = ref('')
 const bindToken = ref('')
 const expired = ref(false)
+const BIND_WX_KEY = 'is_bind_wx_mp'
 let pollTimer = null
 
 const normalizeQrInfo = (payload) => {
   if (!payload) {
-    return { qrCodeUrl: '', ticket: '' }
+    return { qrCodeUrl: '', bindToken: '' }
   }
   const data = typeof payload?.data === 'object' ? payload.data : payload
   return {
@@ -51,6 +54,15 @@ const startPolling = (token) => {
       if (status === 'CONFIRMED') {
         qrUrl.value = ''
         successMessage.value = '已绑定'
+        try {
+          const currentUser = await fetchCurrentUser()
+          const storedUser = setCurrentUser(currentUser)
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(BIND_WX_KEY, String(Boolean(storedUser?.isBindWxMp)))
+          }
+        } catch (error) {
+          showError(error, '获取用户信息失败')
+        }
         clearPolling()
         return
       }
@@ -75,6 +87,14 @@ const loadQrCode = async () => {
   qrUrl.value = ''
   bindToken.value = ''
   expired.value = false
+  if (typeof localStorage !== 'undefined') {
+    const cached = localStorage.getItem(BIND_WX_KEY)
+    if (cached === 'true') {
+      successMessage.value = '已绑定'
+      loading.value = false
+      return
+    }
+  }
   try {
     const payload = await fetchWxQrCodeInfo()
     const info = normalizeQrInfo(payload)

@@ -35,9 +35,15 @@ const handleSubmit = async () => {
     try {
       const currentUser = await fetchCurrentUser()
       const storedUser = setCurrentUser(currentUser)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('is_bind_wx_mp', String(Boolean(storedUser?.isBindWxMp)))
+      }
       setPermissions(storedUser?.perms ?? [])
     } catch (error) {
       setCurrentUser({})
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('is_bind_wx_mp')
+      }
       setPermissions([])
     }
     await router.push({ name: 'home' })

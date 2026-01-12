@@ -2,11 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchMenuRoutes } from '../../api/system/menu'
+import openNavIcon from '../../assets/main/open-nav.svg'
+import closeNavIcon from '../../assets/main/close-nav.svg'
 
 const route = useRoute()
 const MENU_ROUTES_KEY = 'menu_routes'
 
 const menuRoutes = ref([])
+const isCollapsed = ref(false)
 
 const topLevelItems = [
   { label: '首页', path: '/home', icon: 'home.svg', pitchIcon: 'home-pitch.svg' }
@@ -73,6 +76,12 @@ const mapRoutes = (nodes, parentPath = '') =>
     })
 
 const menuSections = computed(() => mapRoutes(menuRoutes.value))
+const flatSections = computed(() =>
+  menuSections.value.map((section) => ({
+    ...section,
+    children: []
+  }))
+)
 
 const isPathActive = (path) => {
   if (!path) return false
@@ -111,15 +120,28 @@ onMounted(() => {
   }
   loadMenuRoutes()
 })
+
+const toggleNav = () => {
+  isCollapsed.value = !isCollapsed.value
+}
+
+const handleMenuSelect = () => {
+  if (isCollapsed.value) {
+    isCollapsed.value = false
+  }
+}
 </script>
 
 <template>
-  <nav class="side-nav">
+  <nav class="side-nav" :class="{ collapsed: isCollapsed }">
     <div class="menu-panel">
       <el-menu
         :default-active="activePath"
         class="menu"
-        router
+        :router="!isCollapsed"
+        :collapse="isCollapsed"
+        :collapse-transition="false"
+        @select="handleMenuSelect"
         background-color="transparent"
         text-color="#2f3a55"
         active-text-color="var(--app-primary)"
@@ -130,63 +152,84 @@ onMounted(() => {
           :index="item.path"
           class="top-level-item"
         >
-        <span class="section-title">
-          <span class="menu-icon" aria-hidden="true">
+        <div class="section-title">
+          <i class="menu-icon" aria-hidden="true">
             <img
               v-if="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
               :src="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
               :alt="item.label"
             />
-          </span>
-          {{ item.label }}
-        </span>
+          </i>
+          <span v-if="!isCollapsed">{{ item.label }}</span>
+        </div>
         </el-menu-item>
-        <template v-for="section in menuSections" :key="section.id || section.label">
+        <template v-if="!isCollapsed">
+          <template v-for="section in menuSections" :key="section.id || section.label">
+            <el-menu-item
+              v-if="!section.isDirectory"
+              :index="section.path || section.label"
+              class="top-level-item"
+            >
+              <i class="menu-icon" aria-hidden="true">
+                <img
+                  v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                  :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                  :alt="section.label"
+                />
+              </i>
+              <span>{{ section.label }}</span>
+            </el-menu-item>
+            <el-sub-menu v-else :index="section.path || section.label">
+              <template #title>
+                <span class="section-title">
+                  <i class="menu-icon" aria-hidden="true">
+                    <img
+                      v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                      :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
+                      :alt="section.label"
+                    />
+                  </i>
+                  {{ section.label }}
+                </span>
+              </template>
+              <el-menu-item
+                v-for="item in section.children"
+                :key="item.id || item.label"
+                :index="item.path || item.label"
+              >
+                <i class="menu-icon" aria-hidden="true">
+                  <img
+                    v-if="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+                    :src="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
+                    :alt="item.label"
+                  />
+                </i>
+                <span>{{ item.label }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
+        </template>
+        <template v-else>
           <el-menu-item
-            v-if="!section.isDirectory"
+            v-for="section in flatSections"
+            :key="section.id || section.label"
             :index="section.path || section.label"
             class="top-level-item"
           >
-            <span class="menu-icon" aria-hidden="true">
+            <i class="menu-icon" aria-hidden="true">
               <img
                 v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
                 :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
                 :alt="section.label"
               />
-            </span>
-            <span>{{ section.label }}</span>
+            </i>
           </el-menu-item>
-          <el-sub-menu v-else :index="section.path || section.label">
-            <template #title>
-              <span class="section-title">
-                <span class="menu-icon" aria-hidden="true">
-                  <img
-                    v-if="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
-                    :src="getIconUrl(section.icon, section.pitchIcon, isPathActive(section.path))"
-                    :alt="section.label"
-                  />
-                </span>
-                {{ section.label }}
-              </span>
-            </template>
-            <el-menu-item
-              v-for="item in section.children"
-              :key="item.id || item.label"
-              :index="item.path || item.label"
-            >
-              <span class="menu-icon" aria-hidden="true">
-                <img
-                  v-if="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
-                  :src="getIconUrl(item.icon, item.pitchIcon, isPathActive(item.path))"
-                  :alt="item.label"
-                />
-              </span>
-              <span>{{ item.label }}</span>
-            </el-menu-item>
-          </el-sub-menu>
         </template>
       </el-menu>
     </div>
+    <button class="nav-toggle" type="button" @click="toggleNav">
+      <img :src="isCollapsed ? openNavIcon : closeNavIcon" alt="toggle" />
+    </button>
   </nav>
 </template>
 
@@ -196,10 +239,19 @@ onMounted(() => {
   width: 240px;
   border-right: 1px solid #e3e8f3;
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: width 0.2s ease;
+}
+
+.side-nav.collapsed {
+  width: 72px;
 }
 
 .menu-panel {
   padding: 12px 8px;
+  flex: 1;
 }
 
 .menu {
@@ -271,6 +323,32 @@ onMounted(() => {
 
 .todo-tag {
   margin-left: auto;
+}
+
+.nav-toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  position: absolute;
+  right: 16px;
+  bottom: 74px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.side-nav.collapsed .nav-toggle {
+  right: 24px;
+}
+
+.nav-toggle img {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 @media (max-width: 960px) {

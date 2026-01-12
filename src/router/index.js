@@ -7,6 +7,7 @@ import UserPage from '../views/System/User/index.vue'
 import PasswordPage from '../views/Person/Password/index.vue'
 import AvatarPage from '../views/Person/Avatar/index.vue'
 import BindWxPage from '../views/Person/BindWx/index.vue'
+import NotFoundPage from '../views/NotFound/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -54,12 +55,31 @@ const routes = [
         meta: { title: '绑定微信' }
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFoundPage,
+    meta: { title: '页面不存在' }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+const TOKEN_STORAGE_KEY = import.meta.env.VITE_AUTH_TOKEN_KEY ?? 'token'
+
+router.beforeEach((to) => {
+  if (to.name === 'login' || to.name === 'NotFound') {
+    return true
+  }
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+  if (!token) {
+    return { name: 'login', replace: true }
+  }
+  return true
 })
 
 export default router

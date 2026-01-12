@@ -321,7 +321,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   position: relative;
-  background: var(--app-surface-alt);
+  background: linear-gradient(90deg, #ffffff 0%, var(--app-primary) 100%);
 }
 
 .page-brand {

@@ -33,8 +33,18 @@ const handleCommand = (command) => {
   }
   if (command === 'change-password') {
     router.push({ name: 'PersonPassword' })
+    return
+  }
+  if (command === 'change-avatar') {
+    router.push({ name: 'PersonAvatar' })
+    return
+  }
+  if (command === 'bind-wx') {
+    router.push({ name: 'PersonBindWx' })
+    return
   }
 }
+
 
 const syncUser = () => {
   currentUser.value = getCurrentUser()
@@ -75,6 +85,12 @@ const displayAvatar = computed(() => currentUser.value?.avatar || props.avatarUr
           <el-dropdown-menu>
             <el-dropdown-item command="change-password">
               修改密码
+            </el-dropdown-item>
+            <el-dropdown-item command="change-avatar">
+              修改头像
+            </el-dropdown-item>
+            <el-dropdown-item command="bind-wx">
+              绑定微信
             </el-dropdown-item>
             <el-dropdown-item command="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>

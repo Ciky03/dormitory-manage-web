@@ -7,10 +7,8 @@ import UserPage from '../views/System/User/index.vue'
 import PasswordPage from '../views/Person/Password/index.vue'
 import AvatarPage from '../views/Person/Avatar/index.vue'
 import BindWxPage from '../views/Person/BindWx/index.vue'
-import CollegePage from '../views/Config/College/index.vue'
 import BuildingPage from '../views/Config/Building/index.vue'
 import ClassPage from '../views/Config/Class/index.vue'
-import MajorPage from '../views/Config/Major/index.vue'
 import RoomPage from '../views/Config/Room/index.vue'
 import NotFoundPage from '../views/NotFound/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
@@ -58,18 +56,6 @@ const routes = [
         name: 'PersonBindWx',
         component: BindWxPage,
         meta: { title: '绑定微信' }
-      },
-      {
-        path: 'config/college',
-        name: 'College',
-        component: CollegePage,
-        meta: { title: '学院配置' }
-      },
-      {
-        path: 'config/major',
-        name: 'Major',
-        component: MajorPage,
-        meta: { title: '专业配置' }
       },
       {
         path: 'config/class',

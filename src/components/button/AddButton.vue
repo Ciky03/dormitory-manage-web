@@ -1,4 +1,5 @@
 <script setup>
+const emit = defineEmits(['click'])
 defineProps({
   type: {
     type: String,
@@ -16,7 +17,13 @@ defineProps({
 </script>
 
 <template>
-  <el-button :type="type" :loading="loading" :disabled="disabled" class="app-button">
+  <el-button
+    :type="type"
+    :loading="loading"
+    :disabled="disabled"
+    class="app-button"
+    @click="emit('click')"
+  >
     <slot>+ 新增</slot>
   </el-button>
 </template>

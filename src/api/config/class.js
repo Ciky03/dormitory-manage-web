@@ -18,3 +18,10 @@ export function fetchClassList(params = {}) {
   const path = query ? `/business/unit/class/list?${query}` : '/business/unit/class/list'
   return request(path, { method: 'GET' })
 }
+
+export function addUnit(payload) {
+  return request('/business/unit/add', {
+    method: 'POST',
+    body: payload
+  })
+}

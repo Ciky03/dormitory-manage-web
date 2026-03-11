@@ -12,7 +12,7 @@ import SearchInput from '../../../components/list/SearchInput.vue'
 import PageList from '../../../components/list/pageList.vue'
 import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
 import { showError, showSuccess } from '../../../util/message/message'
-import { fetchClassList, fetchUnitTreeList } from '../../../api/config/class'
+import { addUnit, fetchClassList, fetchUnitTreeList } from '../../../api/config/class'
 
 const keywords = ref('')
 const collegeFilter = ref('')
@@ -47,11 +47,13 @@ const selectedParentId = ref('')
 const total = ref(0)
 const addUnitDialogVisible = ref(false)
 const addUnitFormRef = ref(null)
+const addUnitSubmitLoading = ref(false)
 const addUnitFormModel = ref({
   parentId: 'root',
   name: '',
   gradeYear: '',
-  headTeacher: ''
+  headTeacher: '',
+  headTeacherId: ''
 })
 
 const collegeOptions = ref([])
@@ -136,7 +138,7 @@ const addUnitFormRules = computed(() => ({
       }
     }
   ],
-  headTeacher: [
+  headTeacherId: [
     {
       trigger: 'blur',
       validator: (rule, value, callback) => {
@@ -333,7 +335,8 @@ const resetAddUnitForm = () => {
     parentId: 'root',
     name: '',
     gradeYear: '',
-    headTeacher: ''
+    headTeacher: '',
+    headTeacherId: ''
   }
 }
 
@@ -346,13 +349,60 @@ const handleAddUnit = () => {
   loadTreeData()
 }
 
+const buildAddUnitPayload = () => {
+  const selectedParentId = addUnitFormModel.value.parentId
+  if (!selectedParentId || selectedParentId === 'root') {
+    return {
+      id: '',
+      parentId: '0000',
+      eduType: 1,
+      name: addUnitFormModel.value.name?.trim() ?? '',
+      gradeYear: addUnitFormModel.value.gradeYear || undefined,
+      headTeacherId: addUnitFormModel.value.headTeacherId || '',
+      headTeacher: addUnitFormModel.value.headTeacher || ''
+    }
+  }
+  const parentNode = treeNodeMap.value.get(selectedParentId)
+  const parentType = Number(parentNode?.type)
+  if (parentType !== 1 && parentType !== 2) {
+    return null
+  }
+  return {
+    id: '',
+    parentId: selectedParentId,
+    eduType: parentType === 1 ? 2 : 3,
+    name: addUnitFormModel.value.name?.trim() ?? '',
+    gradeYear: addUnitFormModel.value.gradeYear || undefined,
+    headTeacherId: addUnitFormModel.value.headTeacherId || '',
+    headTeacher: addUnitFormModel.value.headTeacher || ''
+  }
+}
+
 const handleAddUnitConfirm = async () => {
   try {
     await addUnitFormRef.value?.validate()
   } catch {
     return
   }
-  addUnitDialogVisible.value = false
+  const payload = buildAddUnitPayload()
+  if (!payload) {
+    showError('请选择学院或专业')
+    return
+  }
+  addUnitSubmitLoading.value = true
+  try {
+    await addUnit(payload)
+    showSuccess('新增成功')
+    addUnitDialogVisible.value = false
+    await loadTreeData()
+    if (selectedParentId.value) {
+      await loadClassList()
+    }
+  } catch (error) {
+    showError(error, '新增失败')
+  } finally {
+    addUnitSubmitLoading.value = false
+  }
 }
 
 const handleAdd = () => {
@@ -471,10 +521,10 @@ watch(
 watch(selectedAddUnitType, (type) => {
   if (type !== 2) {
     addUnitFormModel.value.gradeYear = ''
-    addUnitFormModel.value.headTeacher = ''
+    addUnitFormModel.value.headTeacherId = ''
   }
   nextTick(() => {
-    addUnitFormRef.value?.clearValidate?.(['gradeYear', 'headTeacher'])
+    addUnitFormRef.value?.clearValidate?.(['gradeYear', 'headTeacherId'])
   })
 })
 
@@ -677,7 +727,7 @@ onMounted(() => {
             :disabled="!isAddUnitClass"
           />
         </el-form-item>
-        <el-form-item prop="headTeacher" :required="isAddUnitClass">
+        <el-form-item prop="headTeacherId" :required="isAddUnitClass">
           <template #label>
             <span class="class-dialog__label">
               班主任
@@ -689,7 +739,7 @@ onMounted(() => {
             </span>
           </template>
           <el-input
-            v-model="addUnitFormModel.headTeacher"
+            v-model="addUnitFormModel.headTeacherId"
             placeholder="请选择班主任"
             :disabled="!isAddUnitClass"
           />
@@ -698,7 +748,7 @@ onMounted(() => {
       <template #footer>
         <div class="class-dialog__footer">
           <CancelButton @click="addUnitDialogVisible = false" />
-          <ConfirmButton @click="handleAddUnitConfirm" />
+          <ConfirmButton :loading="addUnitSubmitLoading" @click="handleAddUnitConfirm" />
         </div>
       </template>
     </el-dialog>

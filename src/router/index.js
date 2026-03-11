@@ -7,7 +7,6 @@ import UserPage from '../views/System/User/index.vue'
 import PasswordPage from '../views/Person/Password/index.vue'
 import AvatarPage from '../views/Person/Avatar/index.vue'
 import BindWxPage from '../views/Person/BindWx/index.vue'
-import BuildingPage from '../views/Config/Building/index.vue'
 import ClassPage from '../views/Config/Class/index.vue'
 import RoomPage from '../views/Config/Room/index.vue'
 import NotFoundPage from '../views/NotFound/index.vue'
@@ -62,12 +61,6 @@ const routes = [
         name: 'Class',
         component: ClassPage,
         meta: { title: '班级配置' }
-      },
-      {
-        path: 'config/building',
-        name: 'Building',
-        component: BuildingPage,
-        meta: { title: '楼栋配置' }
       },
       {
         path: 'config/room',

@@ -12,7 +12,13 @@ import SearchInput from '../../../components/list/SearchInput.vue'
 import PageList from '../../../components/list/pageList.vue'
 import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
 import { showError, showSuccess } from '../../../util/message/message'
-import { addUnit, fetchClassList, fetchUnitTreeList } from '../../../api/config/class'
+import {
+  addUnit,
+  editUnit,
+  fetchClassList,
+  fetchUnitForm,
+  fetchUnitTreeList
+} from '../../../api/config/class'
 
 const keywords = ref('')
 const collegeFilter = ref('')
@@ -26,16 +32,18 @@ const formRef = ref(null)
 const formModel = ref({
   id: '',
   className: '',
-  collegeId: '',
   majorId: '',
+  gradeYear: '',
+  headTeacherId: '',
   collegeName: '',
   majorName: '',
   createdAt: ''
 })
 const formRules = {
+  majorId: [{ required: true, message: '所属专业不能为空', trigger: 'change' }],
   className: [{ required: true, message: '班级名称不能为空', trigger: 'blur' }],
-  collegeId: [{ required: true, message: '学院名称不能为空', trigger: 'change' }],
-  majorId: [{ required: true, message: '专业名称不能为空', trigger: 'change' }]
+  gradeYear: [{ required: true, message: '年级不能为空', trigger: 'blur' }],
+  headTeacherId: [{ required: true, message: '班主任不能为空', trigger: 'blur' }]
 }
 
 const classData = ref([])
@@ -48,6 +56,8 @@ const total = ref(0)
 const addUnitDialogVisible = ref(false)
 const addUnitFormRef = ref(null)
 const addUnitSubmitLoading = ref(false)
+const addUnitDialogTitle = ref('新增学院/专业/班级')
+const addUnitEditId = ref('')
 const addUnitFormModel = ref({
   parentId: 'root',
   name: '',
@@ -67,7 +77,8 @@ const treeProps = {
 const treeSelectProps = {
   label: 'label',
   children: 'children',
-  value: 'value'
+  value: 'value',
+  disabled: 'disabled'
 }
 
 const normalizeList = (payload) => {
@@ -92,6 +103,16 @@ const mapTreeNodes = (nodes, parentId = '') =>
   }))
 
 const treeData = computed(() => mapTreeNodes(treeSource.value))
+
+const majorTreeData = computed(() => {
+  const walk = (nodes) =>
+    (Array.isArray(nodes) ? nodes : []).map((node) => ({
+      ...node,
+      disabled: Number(node?.type) !== 2,
+      children: walk(node?.children || [])
+    }))
+  return walk(treeData.value)
+})
 
 const treeNodeMap = computed(() => {
   const map = new Map()
@@ -153,7 +174,7 @@ const addUnitFormRules = computed(() => ({
 }))
 
 const addUnitTreeData = computed(() => [
-  { label: '新增学院', value: 'root', children: [] },
+  { label: '作为一级学院', value: 'root', children: [] },
   ...treeData.value
 ])
 
@@ -173,10 +194,7 @@ const normalizePage = (payload) => {
 
 const tableData = computed(() => classData.value)
 
-const majorOptions = computed(() => {
-  const options = majorOptionsMap.value[formModel.value.collegeId]
-  return Array.isArray(options) ? options : []
-})
+const allMajorOptions = computed(() => Object.values(majorOptionsMap.value).flat())
 
 const filterMajorOptions = computed(() => {
   if (!collegeFilter.value) {
@@ -186,12 +204,24 @@ const filterMajorOptions = computed(() => {
   return Array.isArray(options) ? options : []
 })
 
+const getCollegeNameByMajorId = (majorId) => {
+  if (!majorId) return ''
+  const entries = Object.entries(majorOptionsMap.value)
+  for (const [collegeId, majors] of entries) {
+    if (Array.isArray(majors) && majors.some((major) => major.value === majorId)) {
+      return collegeOptions.value.find((option) => option.value === collegeId)?.label ?? ''
+    }
+  }
+  return ''
+}
+
 const resetForm = () => {
   formModel.value = {
     id: '',
     className: '',
-    collegeId: '',
     majorId: '',
+    gradeYear: '',
+    headTeacherId: '',
     collegeName: '',
     majorName: '',
     createdAt: ''
@@ -261,10 +291,6 @@ const handleTreeNodeClick = (node) => {
   currentPage.value = 1
 }
 
-const handleTreeEdit = () => {
-  // Placeholder for tree edit behavior.
-}
-
 const handleTreeDelete = () => {
   // Placeholder for tree delete behavior.
 }
@@ -331,6 +357,7 @@ const loadClassList = async () => {
 }
 
 const resetAddUnitForm = () => {
+  addUnitEditId.value = ''
   addUnitFormModel.value = {
     parentId: 'root',
     name: '',
@@ -342,11 +369,48 @@ const resetAddUnitForm = () => {
 
 const handleAddUnit = () => {
   resetAddUnitForm()
+  addUnitDialogTitle.value = '新增学院/专业/班级'
   addUnitDialogVisible.value = true
   nextTick(() => {
     addUnitFormRef.value?.clearValidate()
   })
   loadTreeData()
+}
+
+const normalizeForm = (payload) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data || {}
+  }
+  return payload || {}
+}
+
+const handleTreeEdit = async (node) => {
+  const unitId = node?.value || node?.id || ''
+  if (!unitId) return
+  addUnitSubmitLoading.value = true
+  try {
+    await loadTreeData()
+    const response = await fetchUnitForm(unitId)
+    const data = normalizeForm(response)
+    const parentId = data?.parentId === '0000' ? 'root' : data?.parentId || 'root'
+    addUnitEditId.value = data?.id || unitId
+    addUnitFormModel.value = {
+      parentId,
+      name: data?.name ?? '',
+      gradeYear: data?.gradeYear ?? '',
+      headTeacher: data?.headTeacher ?? '',
+      headTeacherId: data?.headTeacherId ?? ''
+    }
+    addUnitDialogTitle.value = '编辑学院/专业/班级'
+    addUnitDialogVisible.value = true
+    nextTick(() => {
+      addUnitFormRef.value?.clearValidate()
+    })
+  } catch (error) {
+    showError(error, '获取详情失败')
+  } finally {
+    addUnitSubmitLoading.value = false
+  }
 }
 
 const buildAddUnitPayload = () => {
@@ -391,8 +455,13 @@ const handleAddUnitConfirm = async () => {
   }
   addUnitSubmitLoading.value = true
   try {
-    await addUnit(payload)
-    showSuccess('新增成功')
+    if (addUnitEditId.value) {
+      await editUnit(addUnitEditId.value, { ...payload, id: addUnitEditId.value })
+      showSuccess('编辑成功')
+    } else {
+      await addUnit(payload)
+      showSuccess('新增成功')
+    }
     addUnitDialogVisible.value = false
     await loadTreeData()
     if (selectedParentId.value) {
@@ -415,27 +484,37 @@ const handleAdd = () => {
   })
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   if (!row) return
   isEdit.value = true
   dialogTitle.value = '编辑班级'
-  const collegeId =
-    collegeOptions.value.find((option) => option.label === row.collegeName)?.value ?? ''
-  const majorId =
-    majorOptionsMap.value[collegeId]?.find((option) => option.label === row.majorName)?.value ?? ''
-  formModel.value = {
-    id: row.id ?? '',
-    className: row.className ?? '',
-    collegeId,
-    majorId,
-    collegeName: row.collegeName ?? '',
-    majorName: row.majorName ?? '',
-    createdAt: getCreatedAt(row)
+  loading.value = true
+  try {
+    await loadTreeData()
+    const response = await fetchUnitForm(row.id)
+    const data = normalizeForm(response)
+    const majorId = data?.parentId ?? ''
+    const collegeName = getCollegeNameByMajorId(majorId) || row.collegeName || ''
+    const majorNode = treeNodeMap.value.get(majorId)
+    formModel.value = {
+      id: data?.id ?? row.id ?? '',
+      className: data?.name ?? row.className ?? '',
+      majorId,
+      gradeYear: data?.gradeYear ?? row.gradeYear ?? '',
+      headTeacherId: data?.headTeacherId ?? row.headTeacherId ?? '',
+      collegeName,
+      majorName: majorNode?.label ?? row.majorName ?? '',
+      createdAt: getCreatedAt(row)
+    }
+    dialogVisible.value = true
+    nextTick(() => {
+      formRef.value?.clearValidate()
+    })
+  } catch (error) {
+    showError(error, '获取详情失败')
+  } finally {
+    loading.value = false
   }
-  dialogVisible.value = true
-  nextTick(() => {
-    formRef.value?.clearValidate()
-  })
 }
 
 const openDeleteDialog = (row) => {
@@ -462,23 +541,26 @@ const handleConfirm = async () => {
   }
   submitLoading.value = true
   try {
-    const selectedCollege =
-      collegeOptions.value.find((option) => option.value === formModel.value.collegeId) ?? null
     const selectedMajor =
-      majorOptions.value.find((option) => option.value === formModel.value.majorId) ?? null
-    const collegeName = selectedCollege?.label ?? ''
+      allMajorOptions.value.find((option) => option.value === formModel.value.majorId) ?? null
+    const collegeName = getCollegeNameByMajorId(formModel.value.majorId)
     const majorName = selectedMajor?.label ?? ''
     if (isEdit.value) {
-      classData.value = classData.value.map((item) => {
-        if (item.id !== formModel.value.id) return item
-        return {
-          ...item,
-          className: formModel.value.className,
-          collegeName,
-          majorName
-        }
-      })
+      const payload = {
+        id: formModel.value.id,
+        parentId: formModel.value.majorId,
+        eduType: 3,
+        name: formModel.value.className,
+        gradeYear: formModel.value.gradeYear,
+        headTeacherId: formModel.value.headTeacherId,
+        headTeacher: ''
+      }
+      await editUnit(formModel.value.id, payload)
       showSuccess('编辑成功')
+      await loadTreeData()
+      if (selectedParentId.value) {
+        await loadClassList()
+      }
     } else {
       classData.value = [
         ...classData.value,
@@ -487,12 +569,16 @@ const handleConfirm = async () => {
           className: formModel.value.className,
           collegeName,
           majorName,
+          gradeYear: formModel.value.gradeYear,
+          headTeacherId: formModel.value.headTeacherId,
           createdAt: formatNow()
         }
       ]
       showSuccess('新增成功')
     }
     dialogVisible.value = false
+  } catch (error) {
+    showError(error, isEdit.value ? '编辑失败' : '新增失败')
   } finally {
     submitLoading.value = false
   }
@@ -513,9 +599,9 @@ watch(collegeFilter, () => {
   majorFilter.value = ''
 })
 watch(
-  () => formModel.value.collegeId,
+  () => formModel.value.majorId,
   () => {
-    formModel.value.majorId = ''
+    formModel.value.collegeName = getCollegeNameByMajorId(formModel.value.majorId)
   }
 )
 watch(selectedAddUnitType, (type) => {
@@ -614,6 +700,11 @@ onMounted(() => {
               {{ row.majorName || '-' }}
             </template>
           </el-table-column>
+          <el-table-column label="班主任" min-width="120">
+            <template #default="{ row }">
+              {{ row.headTeacher || '-' }}
+            </template>
+          </el-table-column>
           <el-table-column label="创建时间" min-width="180">
             <template #default="{ row }">
               {{ getCreatedAt(row) || '-' }}
@@ -637,40 +728,25 @@ onMounted(() => {
       class="class-dialog"
     >
       <el-form ref="formRef" :model="formModel" :rules="formRules" label-width="120px">
+        <el-form-item label="所属专业" prop="majorId">
+          <el-tree-select
+            v-model="formModel.majorId"
+            :data="majorTreeData"
+            :props="treeSelectProps"
+            placeholder="请选择所属专业"
+            clearable
+            check-strictly
+            class="class-select"
+          />
+        </el-form-item>
         <el-form-item label="班级名称" prop="className">
           <el-input v-model="formModel.className" placeholder="请输入班级名称" />
         </el-form-item>
-        <el-form-item label="学院名称" prop="collegeId">
-          <el-select
-            v-model="formModel.collegeId"
-            placeholder="请选择学院"
-            filterable
-            clearable
-            class="class-select"
-          >
-            <el-option
-              v-for="option in collegeOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
+        <el-form-item label="年级" prop="gradeYear">
+          <el-input v-model="formModel.gradeYear" placeholder="请输入年级" />
         </el-form-item>
-        <el-form-item label="专业名称" prop="majorId">
-          <el-select
-            v-model="formModel.majorId"
-            placeholder="请选择专业"
-            filterable
-            clearable
-            class="class-select"
-          >
-            <el-option
-              v-for="option in majorOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
+        <el-form-item label="班主任" prop="headTeacherId">
+          <el-input v-model="formModel.headTeacherId" placeholder="请输入班主任" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -684,7 +760,7 @@ onMounted(() => {
       v-model="addUnitDialogVisible"
       width="640px"
       align-center
-      title="新增学院/专业/班级"
+      :title="addUnitDialogTitle"
       class="class-dialog"
     >
       <el-form

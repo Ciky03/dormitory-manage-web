@@ -25,3 +25,14 @@ export function addUnit(payload) {
     body: payload
   })
 }
+
+export function fetchUnitForm(id) {
+  return request(`/business/unit/form/${id}`, { method: 'GET' })
+}
+
+export function editUnit(id, payload) {
+  return request(`/business/unit/edit/${id}`, {
+    method: 'PUT',
+    body: payload
+  })
+}

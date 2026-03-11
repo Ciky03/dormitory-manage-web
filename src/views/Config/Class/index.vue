@@ -14,6 +14,7 @@ import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vu
 import { showError, showSuccess } from '../../../util/message/message'
 import {
   addUnit,
+  deleteUnit,
   editUnit,
   fetchClassList,
   fetchUnitForm,
@@ -51,7 +52,8 @@ const loading = ref(false)
 const submitLoading = ref(false)
 const actionDialogVisible = ref(false)
 const actionRow = ref(null)
-const selectedParentId = ref('')
+const selectedParentId = ref('0000')
+const treeRef = ref(null)
 const total = ref(0)
 const addUnitDialogVisible = ref(false)
 const addUnitFormRef = ref(null)
@@ -260,6 +262,8 @@ const handleReset = () => {
   keywords.value = ''
   collegeFilter.value = ''
   majorFilter.value = ''
+  selectedParentId.value = '0000'
+  treeRef.value?.setCurrentKey?.(null)
   if (currentPage.value === 1) {
     loadClassList()
     return
@@ -291,8 +295,13 @@ const handleTreeNodeClick = (node) => {
   currentPage.value = 1
 }
 
-const handleTreeDelete = () => {
-  // Placeholder for tree delete behavior.
+const handleTreeDelete = (node) => {
+  if (!node) return
+  actionRow.value = {
+    id: node.value ?? node.id ?? '',
+    name: node.label ?? node.name ?? ''
+  }
+  actionDialogVisible.value = true
 }
 
 const syncOptionsFromTree = (nodes) => {
@@ -331,15 +340,11 @@ const loadTreeData = async () => {
 }
 
 const loadClassList = async () => {
-  if (!selectedParentId.value) {
-    classData.value = []
-    total.value = 0
-    return
-  }
+  const parentId = selectedParentId.value || '0000'
   loading.value = true
   try {
     const response = await fetchClassList({
-      parentId: selectedParentId.value,
+      parentId,
       keywords: keywords.value,
       pageNum: currentPage.value,
       pageSize: pageSize.value
@@ -522,15 +527,25 @@ const openDeleteDialog = (row) => {
   actionDialogVisible.value = true
 }
 
-const handleDeleteConfirm = () => {
+const handleDeleteConfirm = async () => {
   const row = actionRow.value
-  if (!row) {
+  const id = row?.id
+  if (!id) {
     actionDialogVisible.value = false
     return
   }
-  classData.value = classData.value.filter((item) => item.id !== row.id)
-  actionDialogVisible.value = false
-  showSuccess('删除成功')
+  submitLoading.value = true
+  try {
+    await deleteUnit(id)
+    showSuccess('删除成功')
+    await loadTreeData()
+    await loadClassList()
+    actionDialogVisible.value = false
+  } catch (error) {
+    showError(error, '删除失败')
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const handleConfirm = async () => {
@@ -616,6 +631,7 @@ watch(selectedAddUnitType, (type) => {
 
 onMounted(() => {
   loadTreeData()
+  loadClassList()
 })
 </script>
 
@@ -627,6 +643,7 @@ onMounted(() => {
           <AddButton class="class-tree__add" size="default" @click="handleAddUnit">新增学院/专业/班级</AddButton>
         </div>
         <el-tree
+          ref="treeRef"
           class="class-tree__body"
           :data="treeData"
           :props="treeProps"
@@ -831,7 +848,7 @@ onMounted(() => {
 
     <ActionConfirmDialog
       v-model="actionDialogVisible"
-      :message="`您确定要删除班级「${actionRow?.className || ''}」吗？`"
+      :message="`您确定要删除「${actionRow?.className || actionRow?.name || ''}」吗？`"
       @confirm="handleDeleteConfirm"
     />
   </section>

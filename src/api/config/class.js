@@ -36,3 +36,7 @@ export function editUnit(id, payload) {
     body: payload
   })
 }
+
+export function deleteUnit(id) {
+  return request(`/business/unit/del/${id}`, { method: 'DELETE' })
+}

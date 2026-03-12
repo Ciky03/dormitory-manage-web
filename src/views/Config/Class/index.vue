@@ -848,7 +848,7 @@ onMounted(() => {
 
     <ActionConfirmDialog
       v-model="actionDialogVisible"
-      :message="`您确定要删除「${actionRow?.className || actionRow?.name || ''}」吗？`"
+      :message="`您确定要删除【${actionRow?.className || actionRow?.name || ''}】吗？`"
       @confirm="handleDeleteConfirm"
     />
   </section>

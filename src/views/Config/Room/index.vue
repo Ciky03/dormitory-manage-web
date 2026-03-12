@@ -1,13 +1,23 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import AddButton from '../../../components/button/AddButton.vue'
+import DeleteLinkButton from '../../../components/button/DeleteLinkButton.vue'
+import EditLinkButton from '../../../components/button/EditLinkButton.vue'
 import QueryButton from '../../../components/button/QueryButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
 import CancelButton from '../../../components/button/CancelButton.vue'
 import ResetButton from '../../../components/button/ResetButton.vue'
 import SearchInput from '../../../components/list/SearchInput.vue'
 import PageList from '../../../components/list/pageList.vue'
-import { addRoom, fetchBuildingList, fetchRoomList } from '../../../api/config/room'
+import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
+import {
+  addRoom,
+  deleteRoom,
+  editRoom,
+  fetchBuildingList,
+  fetchRoomForm,
+  fetchRoomList
+} from '../../../api/config/room'
 import { showError, showSuccess } from '../../../util/message/message'
 
 const keywords = ref('')
@@ -18,6 +28,11 @@ const addDialogVisible = ref(false)
 const addDialogType = ref('building')
 const addFormRef = ref(null)
 const submitLoading = ref(false)
+const isEdit = ref(false)
+const editTarget = ref(null)
+const actionDialogVisible = ref(false)
+const actionType = ref('room')
+const actionRow = ref(null)
 const loading = ref(false)
 const addFormModel = ref({
   buildingNo: '',
@@ -81,6 +96,19 @@ const addFormRules = computed(() => ({
   ]
 }))
 
+const addDialogTitle = computed(() => {
+  if (!isEdit.value) return '新增楼栋/宿舍'
+  return addDialogType.value === 'building' ? '编辑楼栋' : '编辑宿舍'
+})
+
+const actionDialogMessage = computed(() => {
+  const label =
+    actionType.value === 'building'
+      ? actionRow.value?.buildingNo || actionRow.value?.buildingNum || ''
+      : actionRow.value?.roomNum || ''
+  return `您确定要删除【${label}】吗？`
+})
+
 const tableData = computed(() => roomList.value)
 
 const handleQuery = () => {
@@ -110,6 +138,46 @@ const handleSelectBuilding = (building) => {
   currentPage.value = 1
 }
 
+const handleEditBuilding = (building) => {
+  if (!building) return
+  isEdit.value = true
+  addDialogType.value = 'building'
+  resetAddForm()
+  editTarget.value = { id: building.id || '' }
+  loadRoomForm(building.id, 'building')
+  addDialogVisible.value = true
+  nextTick(() => {
+    addFormRef.value?.clearValidate?.()
+  })
+}
+
+const handleDeleteBuilding = (building) => {
+  if (!building) return
+  actionType.value = 'building'
+  actionRow.value = building
+  actionDialogVisible.value = true
+}
+
+const handleEditRoom = (row) => {
+  if (!row) return
+  isEdit.value = true
+  addDialogType.value = 'room'
+  resetAddForm()
+  editTarget.value = { id: row.id || '' }
+  loadRoomForm(row.id, 'room')
+  addDialogVisible.value = true
+  nextTick(() => {
+    addFormRef.value?.clearValidate?.()
+  })
+}
+
+const handleDeleteRoom = (row) => {
+  if (!row) return
+  actionType.value = 'room'
+  actionRow.value = row
+  actionDialogVisible.value = true
+}
+
 const resetAddForm = () => {
   addFormModel.value = {
     buildingNo: '',
@@ -120,6 +188,8 @@ const resetAddForm = () => {
 }
 
 const handleAddDialogOpen = () => {
+  isEdit.value = false
+  editTarget.value = null
   addDialogType.value = 'building'
   resetAddForm()
   addDialogVisible.value = true
@@ -129,9 +199,10 @@ const handleAddDialogOpen = () => {
 }
 
 const buildAddPayload = () => {
+  const editId = isEdit.value ? editTarget.value?.id || '' : ''
   if (addDialogType.value === 'building') {
     return {
-      id: '',
+      id: editId,
       parentId: '0000',
       roomNum: addFormModel.value.buildingNo?.trim() ?? '',
       capacity: undefined
@@ -139,7 +210,7 @@ const buildAddPayload = () => {
   }
   const capacityValue = Number(addFormModel.value.capacity)
   return {
-    id: '',
+    id: editId,
     parentId: addFormModel.value.buildingId,
     roomNum: addFormModel.value.roomNo?.trim() ?? '',
     capacity: Number.isNaN(capacityValue) ? undefined : capacityValue
@@ -155,14 +226,36 @@ const handleAddConfirm = async () => {
   submitLoading.value = true
   try {
     const payload = buildAddPayload()
-    await addRoom(payload)
-    showSuccess('新增成功')
+    if (isEdit.value && editTarget.value?.id) {
+      await editRoom(editTarget.value.id, payload)
+    } else {
+      await addRoom(payload)
+    }
+    showSuccess(isEdit.value ? '编辑成功' : '新增成功')
     addDialogVisible.value = false
     await loadBuildingList()
+    await loadRoomList()
   } catch (error) {
-    showError(error, '新增失败')
+    showError(error, isEdit.value ? '编辑失败' : '新增失败')
   } finally {
     submitLoading.value = false
+  }
+}
+
+const handleDeleteConfirm = async () => {
+  const id = actionRow.value?.id
+  if (!id) {
+    actionDialogVisible.value = false
+    return
+  }
+  try {
+    await deleteRoom(id)
+    showSuccess('删除成功')
+    actionDialogVisible.value = false
+    await loadBuildingList()
+    await loadRoomList()
+  } catch (error) {
+    showError(error, '删除失败')
   }
 }
 
@@ -241,6 +334,33 @@ const loadRoomList = async () => {
   }
 }
 
+const normalizeForm = (payload) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data || {}
+  }
+  return payload || {}
+}
+
+const loadRoomForm = async (id, type) => {
+  if (!id) return
+  loading.value = true
+  try {
+    const response = await fetchRoomForm(id)
+    const data = normalizeForm(response)
+    if (type === 'building') {
+      addFormModel.value.buildingNo = data?.roomNum ?? ''
+    } else {
+      addFormModel.value.buildingId = data?.parentId ?? ''
+      addFormModel.value.roomNo = data?.roomNum ?? ''
+      addFormModel.value.capacity = data?.capacity ?? ''
+    }
+  } catch (error) {
+    showError(error, '获取详情失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
   loadBuildingList()
   loadRoomList()
@@ -260,18 +380,37 @@ watch([currentPage, pageSize], () => {
             新增楼栋/宿舍
           </AddButton>
         </div>
-        <div class="room-building__list">
-          <button
+        <el-scrollbar class="room-building__list">
+          <div
             v-for="building in buildingList"
             :key="building.id"
-            type="button"
             class="room-building__item"
             :class="{ 'room-building__item--active': building.id === selectedBuildingId }"
             @click="handleSelectBuilding(building)"
           >
-            {{ building.buildingNo || '-' }}
-          </button>
-        </div>
+            <span class="room-building__label">{{ building.buildingNo || '-' }}</span>
+            <span class="room-building__actions">
+              <button
+                class="room-building__icon"
+                type="button"
+                @click.stop="handleEditBuilding(building)"
+              >
+                <img class="room-building__icon-img" src="../../../assets/button/edit.svg" alt="edit" />
+              </button>
+              <button
+                class="room-building__icon"
+                type="button"
+                @click.stop="handleDeleteBuilding(building)"
+              >
+                <img
+                  class="room-building__icon-img"
+                  src="../../../assets/button/delete.svg"
+                  alt="delete"
+                />
+              </button>
+            </span>
+          </div>
+        </el-scrollbar>
       </aside>
 
       <div class="room-main">
@@ -320,6 +459,12 @@ watch([currentPage, pageSize], () => {
               {{ row.createTime || '-' }}
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <EditLinkButton @click="handleEditRoom(row)" />
+              <DeleteLinkButton @click="handleDeleteRoom(row)" />
+            </template>
+          </el-table-column>
         </PageList>
       </div>
     </div>
@@ -328,12 +473,12 @@ watch([currentPage, pageSize], () => {
       v-model="addDialogVisible"
       width="520px"
       align-center
-      title="新增楼栋/宿舍"
+      :title="addDialogTitle"
       class="room-dialog"
     >
       <el-form ref="addFormRef" :model="addFormModel" :rules="addFormRules" label-width="120px">
-        <el-form-item label="新增类型">
-          <el-radio-group v-model="addDialogType" class="room-dialog__type">
+        <el-form-item label="类型">
+          <el-radio-group v-model="addDialogType" class="room-dialog__type" :disabled="isEdit">
             <el-radio-button label="building">楼栋</el-radio-button>
             <el-radio-button label="room">宿舍</el-radio-button>
           </el-radio-group>
@@ -372,6 +517,12 @@ watch([currentPage, pageSize], () => {
         </div>
       </template>
     </el-dialog>
+
+    <ActionConfirmDialog
+      v-model="actionDialogVisible"
+      :message="actionDialogMessage"
+      @confirm="handleDeleteConfirm"
+    />
   </section>
 </template>
 
@@ -411,14 +562,25 @@ watch([currentPage, pageSize], () => {
 }
 
 .room-building__list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.room-building__list :deep(.el-scrollbar__view) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: auto;
+}
+
+.room-building__list :deep(.el-scrollbar__wrap) {
+  overflow-x: hidden;
 }
 
 .room-building__item {
-  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   border: 1px solid #ebeef5;
   background: #ffffff;
@@ -426,9 +588,36 @@ watch([currentPage, pageSize], () => {
   border-radius: 6px;
 }
 
+.room-building__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.room-building__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.room-building__icon {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.room-building__icon-img {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .room-building__item--active {
-  border-color: #409eff;
-  color: #409eff;
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
 }
 
 .room-main {
@@ -482,6 +671,16 @@ watch([currentPage, pageSize], () => {
 .room-dialog__type {
   display: flex;
   gap: 8px;
+}
+
+.room-dialog__type :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #ffffff;
+}
+
+.room-dialog__type :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner)::after {
+  border-color: var(--el-color-primary);
 }
 
 .room-dialog__select {

@@ -9,6 +9,8 @@ import AvatarPage from '../views/Person/Avatar/index.vue'
 import BindWxPage from '../views/Person/BindWx/index.vue'
 import ClassPage from '../views/Config/Class/index.vue'
 import RoomPage from '../views/Config/Room/index.vue'
+import ConfigPersonPage from '../views/Config/Person/index.vue'
+import ConfigPersonFormPage from '../views/Config/Person/form.vue'
 import NotFoundPage from '../views/NotFound/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
@@ -67,6 +69,18 @@ const routes = [
         name: 'Room',
         component: RoomPage,
         meta: { title: '宿舍配置' }
+      },
+      {
+        path: 'config/person',
+        name: 'Person',
+        component: ConfigPersonPage,
+        meta: { title: '人员配置' }
+      },
+      {
+        path: 'config/person/form',
+        name: 'PersonForm',
+        component: ConfigPersonFormPage,
+        meta: { title: '新增人员' }
       }
     ]
   },

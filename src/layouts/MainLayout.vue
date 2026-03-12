@@ -11,35 +11,52 @@ const router = useRouter()
 const tabs = ref([{ name: '/home', label: '系统首页', closable: false }])
 const activeTab = ref(route.path)
 
-const getTabLabel = (path) => {
+const getTabLabel = (routeInfo) => {
+  const path = routeInfo?.path || routeInfo
+  if (path === '/config/person/form') {
+    const type = routeInfo?.query?.type
+    if (type === 'teacher') return '新增教师'
+    if (type === 'dormitory') return '新增宿管'
+    return '新增学生'
+  }
   const match = router.getRoutes().find((item) => item.path === path)
   return match?.meta?.title || '系统首页'
 }
 
-const ensureTab = (path) => {
-  if (!tabs.value.some((tab) => tab.name === path)) {
-    tabs.value.push({
-      name: path,
-      label: getTabLabel(path),
-      closable: path !== '/home'
-    })
+const ensureTab = (routeInfo) => {
+  const path = routeInfo?.path || routeInfo
+  const label = getTabLabel(routeInfo)
+  const existing = tabs.value.find((tab) => tab.name === path)
+  if (existing) {
+    existing.label = label
+    return
   }
+  tabs.value.push({
+    name: path,
+    label,
+    closable: path !== '/home'
+  })
 }
 
-ensureTab(route.path)
+ensureTab(route)
 
 watch(
-  () => route.path,
-  (path) => {
-    activeTab.value = path
-    ensureTab(path)
+  () => route.fullPath,
+  () => {
+    activeTab.value = route.path
+    ensureTab(route)
   }
 )
 
 const handleTabClose = (name) => {
+  const closingIndex = tabs.value.findIndex((tab) => tab.name === name)
   tabs.value = tabs.value.filter((tab) => tab.name !== name)
   if (activeTab.value === name) {
-    const fallback = tabs.value[0]?.name || '/home'
+    const fallback =
+      tabs.value[closingIndex - 1]?.name ||
+      tabs.value[closingIndex]?.name ||
+      tabs.value[0]?.name ||
+      '/home'
     router.push(fallback)
   }
 }

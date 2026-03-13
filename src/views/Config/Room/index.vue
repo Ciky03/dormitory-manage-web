@@ -282,8 +282,10 @@ const normalizeList = (payload) => {
   return []
 }
 
-const loadBuildingList = async () => {
-  loading.value = true
+const loadBuildingList = async (withLoading = true) => {
+  if (withLoading) {
+    loading.value = true
+  }
   try {
     const response = await fetchBuildingList()
     const list = normalizeList(response)
@@ -295,7 +297,9 @@ const loadBuildingList = async () => {
     buildingList.value = []
     showError(error, '获取楼栋列表失败')
   } finally {
-    loading.value = false
+    if (withLoading) {
+      loading.value = false
+    }
   }
 }
 
@@ -313,8 +317,10 @@ const normalizePage = (payload) => {
   return { list: normalizedList, total: normalizedTotal }
 }
 
-const loadRoomList = async () => {
-  loading.value = true
+const loadRoomList = async (withLoading = true) => {
+  if (withLoading) {
+    loading.value = true
+  }
   try {
     const response = await fetchRoomList({
       parentId: selectedBuildingId.value,
@@ -330,7 +336,9 @@ const loadRoomList = async () => {
     total.value = 0
     showError(error, '获取宿舍列表失败')
   } finally {
-    loading.value = false
+    if (withLoading) {
+      loading.value = false
+    }
   }
 }
 
@@ -362,8 +370,10 @@ const loadRoomForm = async (id, type) => {
 }
 
 onMounted(() => {
-  loadBuildingList()
-  loadRoomList()
+  loading.value = true
+  Promise.all([loadBuildingList(false), loadRoomList(false)]).finally(() => {
+    loading.value = false
+  })
 })
 
 watch([currentPage, pageSize], () => {

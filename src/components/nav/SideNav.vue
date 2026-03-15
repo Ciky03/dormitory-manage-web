@@ -134,7 +134,7 @@ const handleMenuSelect = () => {
 
 <template>
   <nav class="side-nav" :class="{ collapsed: isCollapsed }">
-    <div class="menu-panel">
+    <el-scrollbar class="menu-panel">
       <el-menu
         :default-active="activePath"
         class="menu"
@@ -226,7 +226,7 @@ const handleMenuSelect = () => {
           </el-menu-item>
         </template>
       </el-menu>
-    </div>
+    </el-scrollbar>
     <button class="nav-toggle" type="button" @click="toggleNav">
       <img :src="isCollapsed ? openNavIcon : closeNavIcon" alt="toggle" />
     </button>
@@ -250,8 +250,30 @@ const handleMenuSelect = () => {
 }
 
 .menu-panel {
-  padding: 12px 8px;
   flex: 1;
+  min-height: 0;
+}
+
+.menu-panel :deep(.el-scrollbar__view) {
+  padding: 12px 8px 96px;
+}
+
+.menu-panel :deep(.el-scrollbar__wrap) {
+  overflow-x: hidden;
+}
+
+.menu-panel :deep(.el-scrollbar__bar.is-vertical) {
+  width: 6px;
+  right: 2px;
+}
+
+.menu-panel :deep(.el-scrollbar__thumb) {
+  background-color: #d3d7e5;
+  border-radius: 6px;
+}
+
+.menu-panel :deep(.el-scrollbar__thumb:hover) {
+  background-color: #c2c6d4;
 }
 
 .menu {

@@ -1,5 +1,6 @@
 ﻿<script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { fetchWxQrCodeInfo, fetchWxQrCodeStatus } from '../../../api/person/bindwx'
 import { fetchCurrentUser } from '../../../api/system/user'
 import wxLogo from '../../../assets/wxLogo.svg'
@@ -13,6 +14,8 @@ const qrUrl = ref('')
 const bindToken = ref('')
 const expired = ref(false)
 const BIND_WX_KEY = 'is_bind_wx_mp'
+const tokenKey = import.meta.env.VITE_AUTH_TOKEN_KEY ?? 'token'
+const route = useRoute()
 let pollTimer = null
 
 const normalizeQrInfo = (payload) => {
@@ -41,12 +44,29 @@ const clearPolling = () => {
   }
 }
 
+const isOnPage = () => route.name === 'PersonBindWx'
+
+const isLoggedIn = () => {
+  if (typeof localStorage === 'undefined') return true
+  return Boolean(localStorage.getItem(tokenKey))
+}
+
+const canPoll = () => isOnPage() && isLoggedIn()
+
 const startPolling = (token) => {
   if (!token) return
   clearPolling()
   const doPoll = async () => {
     try {
+      if (!canPoll()) {
+        clearPolling()
+        return
+      }
       const payload = await fetchWxQrCodeStatus(token)
+      if (!canPoll()) {
+        clearPolling()
+        return
+      }
       const status = normalizeStatus(payload)
       if (status === 'PENDING') {
         return
@@ -104,7 +124,7 @@ const loadQrCode = async () => {
     }
     qrUrl.value = info.qrCodeUrl
     bindToken.value = info.bindToken
-    if (bindToken.value) {
+    if (bindToken.value && canPoll()) {
       startPolling(bindToken.value)
     }
   } catch (error) {
@@ -115,11 +135,50 @@ const loadQrCode = async () => {
   }
 }
 
-onMounted(() => {
+const handleStorage = (event) => {
+  if (event?.key === tokenKey && !event.newValue) {
+    clearPolling()
+  }
+}
+
+const activatePage = () => {
+  if (!canPoll()) {
+    clearPolling()
+    return
+  }
   loadQrCode()
+}
+
+onMounted(() => {
+  activatePage()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorage)
+  }
 })
 
+onActivated(() => {
+  activatePage()
+})
+
+onDeactivated(() => {
+  clearPolling()
+})
+
+watch(
+  () => route.name,
+  (name) => {
+    if (name === 'PersonBindWx') {
+      activatePage()
+    } else {
+      clearPolling()
+    }
+  }
+)
+
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('storage', handleStorage)
+  }
   clearPolling()
 })
 </script>

@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CancelButton from '../../../components/button/CancelButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
+import { addDormitoryManager, addStudent, addTeacher } from '../../../api/person'
+import { showError, showSuccess } from '../../../util/message/message'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,7 +20,10 @@ const formModel = ref({
   roleIds: [],
   studentNum: '',
   admissionYear: '',
-  graduationYear: ''
+  graduationYear: '',
+  teacherNum: '',
+  entryDate: '',
+  dmNum: ''
 })
 
 const formRules = {
@@ -45,7 +50,10 @@ const formRules = {
   ],
   studentNum: [{ required: true, message: '学号不能为空', trigger: 'blur' }],
   admissionYear: [{ required: true, message: '入学年份不能为空', trigger: 'change' }],
-  graduationYear: [{ required: true, message: '毕业年份不能为空', trigger: 'change' }]
+  graduationYear: [{ required: true, message: '毕业年份不能为空', trigger: 'change' }],
+  teacherNum: [{ required: true, message: '工号不能为空', trigger: 'blur' }],
+  dmNum: [{ required: true, message: '工号不能为空', trigger: 'blur' }],
+  entryDate: [{ required: true, message: '入职日期不能为空', trigger: 'change' }]
 }
 
 const formType = computed(() => {
@@ -76,10 +84,54 @@ const handleConfirm = async () => {
     return
   }
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
+  try {
+    const userForm = {
+      username: formModel.value.username,
+      password: formModel.value.password,
+      confirmPassword: formModel.value.confirmPassword,
+      userType: formType.value === 'teacher' ? 2 : formType.value === 'dormitory' ? 3 : 1,
+      phone: formModel.value.phone,
+      email: formModel.value.email,
+      roleIds: formModel.value.roleIds
+    }
+    if (formType.value === 'teacher') {
+      const payload = {
+        realName: formModel.value.realName,
+        teacherNum: formModel.value.teacherNum,
+        entryDate: formModel.value.entryDate,
+        userForm
+      }
+      await addTeacher(payload)
+    } else if (formType.value === 'dormitory') {
+      const payload = {
+        realName: formModel.value.realName,
+        dmNum: formModel.value.dmNum,
+        entryDate: formModel.value.entryDate,
+        userForm
+      }
+      await addDormitoryManager(payload)
+    } else {
+      const payload = {
+        realName: formModel.value.realName,
+        studentNum: formModel.value.studentNum,
+        admissionYear: Number(formModel.value.admissionYear),
+        graduationYear: Number(formModel.value.graduationYear),
+        userForm
+      }
+      await addStudent(payload)
+    }
+    showSuccess('新增成功')
     router.push('/config/person')
-  }, 300)
+  } catch (error) {
+    showError(error, '新增失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const cachedRoleId = sessionStorage.getItem('personRoleId')
+if (cachedRoleId) {
+  formModel.value.roleIds = [cachedRoleId]
 }
 </script>
 
@@ -122,6 +174,34 @@ const handleConfirm = async () => {
                 type="year"
                 placeholder="选择毕业年份"
                 value-format="YYYY"
+              />
+            </el-form-item>
+          </div>
+        </section>
+
+        <section
+          v-else-if="formType === 'teacher' || formType === 'dormitory'"
+          class="person-form__section"
+        >
+          <h4 class="person-form__section-title">
+            {{ formType === 'teacher' ? '教师信息' : '宿管信息' }}
+          </h4>
+          <div class="person-form__grid">
+            <el-form-item v-if="formType === 'teacher'" label="工号" prop="teacherNum" required>
+              <el-input v-model="formModel.teacherNum" placeholder="请输入工号" />
+            </el-form-item>
+            <el-form-item v-else label="工号" prop="dmNum" required>
+              <el-input v-model="formModel.dmNum" placeholder="请输入工号" />
+            </el-form-item>
+            <el-form-item label="姓名" prop="realName" required>
+              <el-input v-model="formModel.realName" placeholder="请输入姓名" />
+            </el-form-item>
+            <el-form-item label="入职日期" prop="entryDate" required>
+              <el-date-picker
+                v-model="formModel.entryDate"
+                type="date"
+                placeholder="选择入职日期"
+                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </div>

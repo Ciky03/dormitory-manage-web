@@ -6,9 +6,12 @@ import QueryButton from '../../../components/button/QueryButton.vue'
 import ResetButton from '../../../components/button/ResetButton.vue'
 import SearchInput from '../../../components/list/SearchInput.vue'
 import PageList from '../../../components/list/pageList.vue'
+import { fetchRoleIdByCode } from '../../../api/person'
+import { showError } from '../../../util/message/message'
 
 const router = useRouter()
 const activeName = ref('student')
+const loading = ref(false)
 const tabs = [
   { name: 'student', label: '学生' },
   { name: 'teacher', label: '教师' },
@@ -32,18 +35,39 @@ const handleReset = (name) => {
 
 const handleAdd = (name) => {
   tabState.value[name].currentPage = 1
-  router.push({ path: '/config/person/form', query: { type: name } })
+  const roleCode =
+    name === 'teacher' ? 'TEACHER' : name === 'dormitory' ? 'DORMITORY_MANAGER' : 'STUDENT'
+  loading.value = true
+  fetchRoleIdByCode(roleCode)
+    .then((roleId) => {
+      const normalized = roleId?.data ?? ''
+      if (normalized) {
+        sessionStorage.setItem('personRoleId', String(normalized))
+      } else {
+        sessionStorage.removeItem('personRoleId')
+      }
+    })
+    .catch((error) => {
+      sessionStorage.removeItem('personRoleId')
+      showError(error, '获取角色失败')
+    })
+    .finally(() => {
+      loading.value = false
+      router.push({ path: '/config/person/form', query: { type: name } })
+    })
 }
 </script>
 
 <template>
-  <div class="config-person-page">
+  <div class="config-person-page" v-loading="loading">
     <el-tabs v-model="activeName" class="person-tabs">
       <el-tab-pane v-for="tab in tabs" :key="tab.name" :label="tab.label" :name="tab.name">
         <div class="person-panel">
           <div class="person-card person-card--search">
             <div class="person-toolbar">
-              <AddButton @click="handleAdd(tab.name)">+ 新增</AddButton>
+              <AddButton :loading="loading" :disabled="loading" @click="handleAdd(tab.name)">
+                + 新增
+              </AddButton>
               <SearchInput
                 v-model="tabState[tab.name].keywords"
                 label="关键字"

@@ -1,14 +1,25 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CancelButton from '../../../components/button/CancelButton.vue'
 import ConfirmButton from '../../../components/button/ConfirmButton.vue'
-import { addDormitoryManager, addStudent, addTeacher } from '../../../api/person'
+import {
+  addDormitoryManager,
+  addStudent,
+  addTeacher,
+  editDormitoryManager,
+  editStudent,
+  editTeacher,
+  fetchDormitoryManagerForm,
+  fetchStudentForm,
+  fetchTeacherForm
+} from '../../../api/person'
 import { showError, showSuccess } from '../../../util/message/message'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const formLoading = ref(false)
 const formRef = ref(null)
 const formModel = ref({
   username: '',
@@ -18,6 +29,7 @@ const formModel = ref({
   password: '',
   confirmPassword: '',
   roleIds: [],
+  userFormId: '',
   studentNum: '',
   admissionYear: '',
   graduationYear: '',
@@ -62,9 +74,10 @@ const formType = computed(() => {
 })
 
 const title = computed(() => {
-  if (formType.value === 'teacher') return '新增教师'
-  if (formType.value === 'dormitory') return '新增宿管'
-  return '新增学生'
+  const isEdit = Boolean(route.query.id)
+  if (formType.value === 'teacher') return isEdit ? '修改教师' : '新增教师'
+  if (formType.value === 'dormitory') return isEdit ? '修改宿管' : '新增宿管'
+  return isEdit ? '修改学生' : '新增学生'
 })
 
 const roleLabel = computed(() => {
@@ -85,6 +98,7 @@ const handleConfirm = async () => {
   }
   loading.value = true
   try {
+    const editId = route.query.id
     const userForm = {
       username: formModel.value.username,
       password: formModel.value.password,
@@ -94,6 +108,9 @@ const handleConfirm = async () => {
       email: formModel.value.email,
       roleIds: formModel.value.roleIds
     }
+    if (formModel.value.userFormId) {
+      userForm.id = String(formModel.value.userFormId)
+    }
     if (formType.value === 'teacher') {
       const payload = {
         realName: formModel.value.realName,
@@ -101,7 +118,11 @@ const handleConfirm = async () => {
         entryDate: formModel.value.entryDate,
         userForm
       }
-      await addTeacher(payload)
+      if (editId) {
+        await editTeacher(editId, payload)
+      } else {
+        await addTeacher(payload)
+      }
     } else if (formType.value === 'dormitory') {
       const payload = {
         realName: formModel.value.realName,
@@ -109,7 +130,11 @@ const handleConfirm = async () => {
         entryDate: formModel.value.entryDate,
         userForm
       }
-      await addDormitoryManager(payload)
+      if (editId) {
+        await editDormitoryManager(editId, payload)
+      } else {
+        await addDormitoryManager(payload)
+      }
     } else {
       const payload = {
         realName: formModel.value.realName,
@@ -118,9 +143,13 @@ const handleConfirm = async () => {
         graduationYear: Number(formModel.value.graduationYear),
         userForm
       }
-      await addStudent(payload)
+      if (editId) {
+        await editStudent(editId, payload)
+      } else {
+        await addStudent(payload)
+      }
     }
-    showSuccess('新增成功')
+    showSuccess(editId ? '修改成功' : '新增成功')
     router.push('/config/person')
   } catch (error) {
     showError(error, '新增失败')
@@ -129,14 +158,63 @@ const handleConfirm = async () => {
   }
 }
 
-const cachedRoleId = sessionStorage.getItem('personRoleId')
-if (cachedRoleId) {
-  formModel.value.roleIds = [cachedRoleId]
+const normalizeForm = (payload) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data || {}
+  }
+  return payload || {}
 }
+
+const loadForm = async () => {
+  const id = route.query.id
+  if (!id) return
+  formLoading.value = true
+  try {
+    let response
+    if (formType.value === 'teacher') {
+      response = await fetchTeacherForm(id)
+    } else if (formType.value === 'dormitory') {
+      response = await fetchDormitoryManagerForm(id)
+    } else {
+      response = await fetchStudentForm(id)
+    }
+    const data = normalizeForm(response)
+    const userForm = data?.userForm ?? data?.user ?? {}
+    formModel.value = {
+      ...formModel.value,
+      realName: data?.realName ?? formModel.value.realName,
+      studentNum: data?.studentNum ?? formModel.value.studentNum,
+      admissionYear:
+        data?.admissionYear !== undefined && data?.admissionYear !== null
+          ? String(data.admissionYear)
+          : formModel.value.admissionYear,
+      graduationYear:
+        data?.graduationYear !== undefined && data?.graduationYear !== null
+          ? String(data.graduationYear)
+          : formModel.value.graduationYear,
+      teacherNum: data?.teacherNum ?? formModel.value.teacherNum,
+      dmNum: data?.dmNum ?? formModel.value.dmNum,
+      entryDate: data?.entryDate ?? formModel.value.entryDate,
+      username: userForm?.username ?? formModel.value.username,
+      phone: userForm?.phone ?? formModel.value.phone,
+      email: userForm?.email ?? formModel.value.email,
+      roleIds: Array.isArray(userForm?.roleIds) ? userForm.roleIds : formModel.value.roleIds,
+      userFormId: userForm?.id ?? formModel.value.userFormId
+    }
+  } catch (error) {
+    showError(error, '获取详情失败')
+  } finally {
+    formLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadForm()
+})
 </script>
 
 <template>
-  <section class="person-form-tab">
+  <section class="person-form-tab" v-loading="formLoading">
     <header class="person-form-tab__header">
       <h3 class="person-form-tab__title">{{ title }}</h3>
     </header>

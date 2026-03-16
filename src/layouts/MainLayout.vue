@@ -15,9 +15,10 @@ const getTabLabel = (routeInfo) => {
   const path = routeInfo?.path || routeInfo
   if (path === '/config/person/form') {
     const type = routeInfo?.query?.type
-    if (type === 'teacher') return '新增教师'
-    if (type === 'dormitory') return '新增宿管'
-    return '新增学生'
+    const isEdit = Boolean(routeInfo?.query?.id)
+    if (type === 'teacher') return isEdit ? '修改教师' : '新增教师'
+    if (type === 'dormitory') return isEdit ? '修改宿管' : '新增宿管'
+    return isEdit ? '修改学生' : '新增学生'
   }
   const match = router.getRoutes().find((item) => item.path === path)
   return match?.meta?.title || '系统首页'

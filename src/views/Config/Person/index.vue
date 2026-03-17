@@ -1,8 +1,10 @@
 ﻿<script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AddButton from '../../../components/button/AddButton.vue'
 import ActionConfirmDialog from '../../../components/item/ActionConfirmDialog.vue'
+import CancelButton from '../../../components/button/CancelButton.vue'
+import ConfirmButton from '../../../components/button/ConfirmButton.vue'
 import DeleteLinkButton from '../../../components/button/DeleteLinkButton.vue'
 import EditLinkButton from '../../../components/button/EditLinkButton.vue'
 import QueryButton from '../../../components/button/QueryButton.vue'
@@ -13,10 +15,12 @@ import {
   deleteDormitoryManager,
   deleteStudent,
   deleteTeacher,
+  addStudentClassConfig,
   fetchDormitoryManagerList,
   fetchStudentList,
   fetchTeacherList
 } from '../../../api/person'
+import { fetchUnitTreeList } from '../../../api/config/class'
 import { showError, showSuccess } from '../../../util/message/message'
 
 const router = useRouter()
@@ -25,6 +29,11 @@ const listLoading = ref(false)
 const actionDialogVisible = ref(false)
 const actionRow = ref(null)
 const actionType = ref('student')
+const classDialogVisible = ref(false)
+const classDialogLoading = ref(false)
+const classTreeSource = ref([])
+const classSelectedId = ref('')
+const classStudentRow = ref(null)
 const tabs = [
   { name: 'student', label: '学生' },
   { name: 'teacher', label: '教师' },
@@ -49,6 +58,45 @@ const normalizePage = (payload) => {
   const normalizedTotal =
     Number(data?.total ?? data?.count ?? normalizedList.length) || 0
   return { list: normalizedList, total: normalizedTotal }
+}
+
+const normalizeList = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.rows)) return payload.rows
+  if (Array.isArray(payload?.list)) return payload.list
+  if (Array.isArray(payload?.data?.rows)) return payload.data.rows
+  if (Array.isArray(payload?.data?.list)) return payload.data.list
+  return []
+}
+
+const mapTreeNodes = (nodes) =>
+  (Array.isArray(nodes) ? nodes : []).map((node) => ({
+    label: node?.name ?? '',
+    value: node?.id ?? '',
+    disabled: Number(node?.type) !== 3,
+    children: mapTreeNodes(node?.children || [])
+  }))
+
+const classTreeData = computed(() => mapTreeNodes(classTreeSource.value))
+
+const findSelectedId = (nodes) => {
+  const list = Array.isArray(nodes) ? nodes : []
+  for (const node of list) {
+    if (node?.selected === true && String(node?.id || '') !== '') {
+      return String(node.id)
+    }
+    const childSelected = findSelectedId(node?.children || [])
+    if (childSelected) return childSelected
+  }
+  return ''
+}
+
+const treeSelectProps = {
+  label: 'label',
+  children: 'children',
+  value: 'value',
+  disabled: 'disabled'
 }
 
 const loadList = async (name) => {
@@ -139,6 +187,55 @@ const handleDeleteConfirm = async () => {
   }
 }
 
+const handleClassConfigOpen = async (row) => {
+  classStudentRow.value = { ...(row || {}), type: activeName.value }
+  classSelectedId.value = ''
+  classDialogVisible.value = true
+  classDialogLoading.value = true
+  try {
+    const response = await fetchUnitTreeList({
+      queryAll: true,
+      studentId: row?.id ?? ''
+    })
+    const list = normalizeList(response)
+    classTreeSource.value = list
+    const selectedId = findSelectedId(list)
+    classSelectedId.value = selectedId || ''
+  } catch (error) {
+    classTreeSource.value = []
+    showError(error, '获取班级列表失败')
+  } finally {
+    classDialogLoading.value = false
+  }
+}
+
+const handleClassConfigConfirm = () => {
+  const studentId = classStudentRow.value?.id
+  const classId = classSelectedId.value
+  if (!studentId || !classId) {
+    showError(null, '请选择班级')
+    return
+  }
+  classDialogLoading.value = true
+  addStudentClassConfig({ studentId, classId })
+    .then(() => {
+      showSuccess('配置成功')
+      classDialogVisible.value = false
+      return loadList(activeName.value)
+    })
+    .catch((error) => {
+      showError(error, '配置失败')
+    })
+    .finally(() => {
+      classDialogLoading.value = false
+    })
+}
+
+const handleDormConfigOpen = (row) => {
+  if (!row) return
+  showError(null, '宿舍配置暂未接入')
+}
+
 watch(activeName, (name) => {
   loadList(name)
 })
@@ -188,12 +285,12 @@ onMounted(() => {
             table-height="100%"
           >
             <el-table-column type="index" label="序号" width="70" align="center" />
-            <template v-if="tab.name === 'student'">
-              <el-table-column label="姓名" min-width="120">
-                <template #default="{ row }">
-                  {{ row.realName || '-' }}
-                </template>
-              </el-table-column>
+          <template v-if="tab.name === 'student'">
+            <el-table-column label="姓名" min-width="120">
+              <template #default="{ row }">
+                {{ row.realName || '-' }}
+              </template>
+            </el-table-column>
               <el-table-column label="学号" min-width="140">
                 <template #default="{ row }">
                   {{ row.studentNum || '-' }}
@@ -209,18 +306,24 @@ onMounted(() => {
                   {{ row.admissionYear ?? '-' }}
                 </template>
               </el-table-column>
-              <el-table-column label="毕业年份" min-width="120">
-                <template #default="{ row }">
-                  {{ row.graduationYear || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right">
-                <template #default="{ row }">
-                  <EditLinkButton @click="handleEdit(tab.name, row)" />
-                  <DeleteLinkButton @click="handleDelete(tab.name, row)" />
-                </template>
-              </el-table-column>
-            </template>
+            <el-table-column label="毕业年份" min-width="120">
+              <template #default="{ row }">
+                {{ row.graduationYear || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="260" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="handleClassConfigOpen(row)">
+                  班级配置
+                </el-button>
+                <el-button link type="primary" @click="handleDormConfigOpen(row)">
+                  宿舍配置
+                </el-button>
+                <EditLinkButton @click="handleEdit(tab.name, row)" />
+                <DeleteLinkButton @click="handleDelete(tab.name, row)" />
+              </template>
+            </el-table-column>
+          </template>
             <template v-else>
               <el-table-column label="姓名" min-width="140">
                 <template #default="{ row }">
@@ -252,10 +355,10 @@ onMounted(() => {
                 </el-table-column>
               </template>
               <el-table-column label="操作" width="180" fixed="right">
-                <template #default="{ row }">
+              <template #default="{ row }">
                   <EditLinkButton @click="handleEdit(tab.name, row)" />
                   <DeleteLinkButton @click="handleDelete(tab.name, row)" />
-                </template>
+              </template>
               </el-table-column>
             </template>
           </PageList>
@@ -268,6 +371,31 @@ onMounted(() => {
     :message="`您确定要删除「${actionRow?.realName || ''}」吗？`"
     @confirm="handleDeleteConfirm"
   />
+  <el-dialog
+    v-model="classDialogVisible"
+    width="520px"
+    align-center
+    title="班级配置"
+    class="person-class-dialog"
+  >
+    <div v-loading="classDialogLoading">
+      <el-tree-select
+        v-model="classSelectedId"
+        :data="classTreeData"
+        :props="treeSelectProps"
+        placeholder="请选择班级"
+        clearable
+        check-strictly
+        class="person-class-select"
+      />
+    </div>
+    <template #footer>
+      <div class="person-class-dialog__footer">
+        <CancelButton @click="classDialogVisible = false" />
+        <ConfirmButton @click="handleClassConfigConfirm" />
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -334,6 +462,16 @@ onMounted(() => {
 .person-toolbar__actions {
   display: flex;
   gap: 10px;
+}
+
+.person-class-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.person-class-select {
+  width: 100%;
 }
 
 @media (max-width: 1024px) {

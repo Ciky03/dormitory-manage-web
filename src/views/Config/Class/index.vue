@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import AddButton from '../../../components/button/AddButton.vue'
@@ -20,6 +20,7 @@ import {
   fetchUnitForm,
   fetchUnitTreeList
 } from '../../../api/config/class'
+import { fetchTeacherList } from '../../../api/person'
 
 const keywords = ref('')
 const collegeFilter = ref('')
@@ -67,6 +68,17 @@ const addUnitFormModel = ref({
   headTeacher: '',
   headTeacherId: ''
 })
+
+const teacherDialogVisible = ref(false)
+const teacherLoading = ref(false)
+const teacherKeywords = ref('')
+const teacherList = ref([])
+const teacherTotal = ref(0)
+const teacherPage = ref(1)
+const teacherPageSize = ref(10)
+const teacherSelectedId = ref('')
+const teacherSelectedName = ref('')
+const teacherDialogTarget = ref('class')
 
 const collegeOptions = ref([])
 const majorOptionsMap = ref({})
@@ -224,6 +236,7 @@ const resetForm = () => {
     majorId: '',
     gradeYear: '',
     headTeacherId: '',
+    headTeacherName: '',
     collegeName: '',
     majorName: '',
     createdAt: ''
@@ -507,6 +520,7 @@ const handleEdit = async (row) => {
       majorId,
       gradeYear: data?.gradeYear ?? row.gradeYear ?? '',
       headTeacherId: data?.headTeacherId ?? row.headTeacherId ?? '',
+      headTeacherName: data?.headTeacher ?? row.headTeacher ?? '',
       collegeName,
       majorName: majorNode?.label ?? row.majorName ?? '',
       createdAt: getCreatedAt(row)
@@ -520,6 +534,108 @@ const handleEdit = async (row) => {
   } finally {
     loading.value = false
   }
+}
+
+const sanitizeGradeYear = (value) => String(value ?? '').replace(/\D+/g, '')
+const handleGradeYearInput = (value) => {
+  formModel.value.gradeYear = sanitizeGradeYear(value)
+}
+
+const normalizeTeacherList = (payload) => {
+  const data = payload?.data ?? payload ?? {}
+  const list =
+    data?.list ??
+    data?.rows ??
+    data?.records ??
+    data?.data ??
+    (Array.isArray(data) ? data : [])
+  return Array.isArray(list) ? list : []
+}
+
+const normalizeTeacherPage = (payload) => {
+  const data = payload?.data ?? payload ?? {}
+  const list =
+    data?.list ??
+    data?.rows ??
+    data?.records ??
+    data?.data ??
+    (Array.isArray(data) ? data : [])
+  const normalizedList = Array.isArray(list) ? list : []
+  const normalizedTotal =
+    Number(data?.total ?? data?.count ?? normalizedList.length) || 0
+  return { list: normalizedList, total: normalizedTotal }
+}
+
+const loadTeacherList = async () => {
+  teacherLoading.value = true
+  try {
+    const response = await fetchTeacherList({
+      keywords: teacherKeywords.value,
+      pageNum: teacherPage.value,
+      pageSize: teacherPageSize.value
+    })
+    const normalized = normalizeTeacherPage(response)
+    teacherList.value = normalized.list
+    teacherTotal.value = normalized.total
+  } catch (error) {
+    teacherList.value = []
+    teacherTotal.value = 0
+    showError(error, '获取教师列表失败')
+  } finally {
+    teacherLoading.value = false
+  }
+}
+
+const handleTeacherDialogOpen = (target = 'class') => {
+  teacherDialogTarget.value = target
+  if (target === 'unit') {
+    teacherSelectedId.value = addUnitFormModel.value.headTeacherId || ''
+    teacherSelectedName.value = addUnitFormModel.value.headTeacher || ''
+  } else {
+    teacherSelectedId.value = formModel.value.headTeacherId || ''
+    teacherSelectedName.value = formModel.value.headTeacherName || ''
+  }
+  teacherPage.value = 1
+  teacherDialogVisible.value = true
+  loadTeacherList()
+}
+
+const handleTeacherSelect = (row) => {
+  if (!row) return
+  teacherSelectedId.value = row.id || ''
+  teacherSelectedName.value = row.realName || row.name || ''
+}
+
+const handleTeacherQuery = () => {
+  if (teacherPage.value === 1) {
+    loadTeacherList()
+    return
+  }
+  teacherPage.value = 1
+}
+
+const handleTeacherReset = () => {
+  teacherKeywords.value = ''
+  if (teacherPage.value === 1) {
+    loadTeacherList()
+    return
+  }
+  teacherPage.value = 1
+}
+
+const handleTeacherDialogConfirm = () => {
+  if (!teacherSelectedId.value) {
+    showError(null, '请选择班主任')
+    return
+  }
+  if (teacherDialogTarget.value === 'unit') {
+    addUnitFormModel.value.headTeacherId = teacherSelectedId.value
+    addUnitFormModel.value.headTeacher = teacherSelectedName.value
+  } else {
+    formModel.value.headTeacherId = teacherSelectedId.value
+    formModel.value.headTeacherName = teacherSelectedName.value
+  }
+  teacherDialogVisible.value = false
 }
 
 const openDeleteDialog = (row) => {
@@ -612,6 +728,11 @@ watch([currentPage, pageSize], () => {
 watch([total, pageSize], ensurePageInRange)
 watch(collegeFilter, () => {
   majorFilter.value = ''
+})
+watch([teacherPage, teacherPageSize], () => {
+  if (teacherDialogVisible.value) {
+    loadTeacherList()
+  }
 })
 watch(
   () => formModel.value.majorId,
@@ -760,10 +881,20 @@ onMounted(() => {
           <el-input v-model="formModel.className" placeholder="请输入班级名称" />
         </el-form-item>
         <el-form-item label="年级" prop="gradeYear">
-          <el-input v-model="formModel.gradeYear" placeholder="请输入年级" />
+          <el-input
+            v-model="formModel.gradeYear"
+            placeholder="请输入年级"
+            inputmode="numeric"
+            @input="handleGradeYearInput"
+          />
         </el-form-item>
         <el-form-item label="班主任" prop="headTeacherId">
-          <el-input v-model="formModel.headTeacherId" placeholder="请输入班主任" />
+          <el-input
+            v-model="formModel.headTeacherName"
+            placeholder="请选择班主任"
+            readonly
+            @click="handleTeacherDialogOpen"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -832,9 +963,11 @@ onMounted(() => {
             </span>
           </template>
           <el-input
-            v-model="addUnitFormModel.headTeacherId"
+            v-model="addUnitFormModel.headTeacher"
             placeholder="请选择班主任"
+            readonly
             :disabled="!isAddUnitClass"
+            @click="isAddUnitClass && handleTeacherDialogOpen('unit')"
           />
         </el-form-item>
       </el-form>
@@ -842,6 +975,64 @@ onMounted(() => {
         <div class="class-dialog__footer">
           <CancelButton @click="addUnitDialogVisible = false" />
           <ConfirmButton :loading="addUnitSubmitLoading" @click="handleAddUnitConfirm" />
+        </div>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="teacherDialogVisible"
+      width="860px"
+      align-center
+      title="选择班主任"
+      class="class-dialog"
+    >
+      <div class="class-teacher-dialog" v-loading="teacherLoading">
+        <div class="class-teacher-dialog__search">
+          <SearchInput
+            v-model="teacherKeywords"
+            label="关键字"
+            placeholder="教师姓名/工号"
+            width="100%"
+            @enter="handleTeacherQuery"
+          />
+          <div class="class-teacher-dialog__actions">
+            <QueryButton @click="handleTeacherQuery" />
+          </div>
+        </div>
+        <PageList
+          :data="teacherList"
+          :total="teacherTotal"
+          v-model:currentPage="teacherPage"
+          v-model:pageSize="teacherPageSize"
+          :table-props="{ border: true, onRowClick: handleTeacherSelect }"
+          table-height="100%"
+        >
+          <el-table-column label="" width="50" align="center">
+            <template #default="{ row }">
+              <el-radio
+                v-model="teacherSelectedId"
+                :label="row.id"
+                class="class-teacher-radio"
+                @change="handleTeacherSelect(row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="姓名" min-width="140">
+            <template #default="{ row }">
+              {{ row.realName || row.name || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="工号" min-width="140">
+            <template #default="{ row }">
+              {{ row.teacherNum || '-' }}
+            </template>
+          </el-table-column>
+        </PageList>
+      </div>
+      <template #footer>
+        <div class="class-dialog__footer">
+          <CancelButton @click="teacherDialogVisible = false" />
+          <ConfirmButton @click="handleTeacherDialogConfirm" />
         </div>
       </template>
     </el-dialog>
@@ -987,6 +1178,39 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
+.class-teacher-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 520px;
+}
+
+.class-teacher-dialog__search {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.class-teacher-dialog__search > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.class-teacher-dialog__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.class-teacher-radio :deep(.el-radio__label) {
+  display: none;
+}
+.class-teacher-dialog :deep(.table-card) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+
+
 .class-dialog__hint {
   color: #909399;
   cursor: pointer;
@@ -1012,3 +1236,4 @@ onMounted(() => {
   }
 }
 </style>
+

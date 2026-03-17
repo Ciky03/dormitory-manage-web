@@ -38,7 +38,7 @@
   const formRules = computed(() => ({
     username: [{ required: true, message: '用户名不能为空', trigger: 'blur' }],
     phone: [{ required: true, message: '手机号不能为空', trigger: 'blur' }],
-    email: [{ required: true, message: '邮箱不能为空', trigger: 'blur' }],
+    email: [],
     password: [
       {
         validator: (rule, value, callback) => {
@@ -514,7 +514,7 @@
           <el-form-item label="真实姓名" prop="realName">
             <el-input v-model="formModel.realName" placeholder="请输入真实姓名" />
           </el-form-item>
-          <el-form-item v-if="!isEdit" label="密码" prop="password">
+          <el-form-item v-if="!isEdit" label="密码" prop="password" required>
             <el-input
               v-model="formModel.password"
               type="password"
@@ -523,7 +523,7 @@
               autocomplete="new-password"
             />
           </el-form-item>
-          <el-form-item v-if="!isEdit" label="确认密码" prop="confirmPassword">
+          <el-form-item v-if="!isEdit" label="确认密码" prop="confirmPassword" required>
             <el-input
               v-model="formModel.confirmPassword"
               type="password"

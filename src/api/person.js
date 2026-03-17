@@ -96,3 +96,10 @@ export function deleteTeacher(id) {
 export function deleteDormitoryManager(id) {
   return request(`/business/person/dm/del/${id}`, { method: 'DELETE' })
 }
+
+export function addStudentClassConfig(payload) {
+  return request('/business/person/config/class/student/add', {
+    method: 'POST',
+    body: payload
+  })
+}

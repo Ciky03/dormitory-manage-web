@@ -9,8 +9,10 @@ const buildQuery = (params = {}) => {
   return query.toString()
 }
 
-export function fetchUnitTreeList() {
-  return request('/business/unit/tree/list', { method: 'GET' })
+export function fetchUnitTreeList(params = {}) {
+  const query = buildQuery(params)
+  const path = query ? `/business/unit/tree/list?${query}` : '/business/unit/tree/list'
+  return request(path, { method: 'GET' })
 }
 
 export function fetchClassList(params = {}) {

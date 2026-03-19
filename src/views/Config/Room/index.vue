@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import AddButton from '../../../components/button/AddButton.vue'
 import DeleteLinkButton from '../../../components/button/DeleteLinkButton.vue'
@@ -55,18 +55,6 @@ const addFormRules = computed(() => ({
       validator: (rule, value, callback) => {
         if (addDialogType.value === 'building' && !String(value || '').trim()) {
           callback(new Error('请输入楼栋号'))
-          return
-        }
-        callback()
-      }
-    }
-  ],
-  dmId: [
-    {
-      trigger: 'change',
-      validator: (rule, value, callback) => {
-        if (addDialogType.value === 'building' && !value) {
-          callback(new Error('请选择宿管'))
           return
         }
         callback()
@@ -593,7 +581,12 @@ watch([dmPage, dmPageSize], () => {
             <el-radio-button label="room">宿舍</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="addDialogType === 'building'" label="楼栋号" prop="buildingNo">
+        <el-form-item
+          v-if="addDialogType === 'building'"
+          label="楼栋号"
+          prop="buildingNo"
+          :required="true"
+        >
           <el-input v-model="addFormModel.buildingNo" placeholder="请输入楼栋号" />
         </el-form-item>
         <el-form-item v-if="addDialogType === 'building'" label="宿管" prop="dmId">
@@ -605,7 +598,7 @@ watch([dmPage, dmPageSize], () => {
           />
         </el-form-item>
         <template v-else>
-          <el-form-item label="楼栋" prop="buildingId">
+          <el-form-item label="楼栋" prop="buildingId" :required="true">
             <el-select
               v-model="addFormModel.buildingId"
               placeholder="请选择楼栋"
@@ -620,10 +613,10 @@ watch([dmPage, dmPageSize], () => {
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="宿舍号" prop="roomNo">
+          <el-form-item label="宿舍号" prop="roomNo" :required="true">
             <el-input v-model="addFormModel.roomNo" placeholder="请输入宿舍号" />
           </el-form-item>
-          <el-form-item label="可住人数" prop="capacity">
+          <el-form-item label="可住人数" prop="capacity" :required="true">
             <el-input v-model="addFormModel.capacity" placeholder="请输入可住人数" />
           </el-form-item>
         </template>
@@ -916,3 +909,4 @@ watch([dmPage, dmPageSize], () => {
 }
 </style>
     
+

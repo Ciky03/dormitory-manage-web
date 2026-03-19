@@ -44,8 +44,7 @@ const formModel = ref({
 const formRules = {
   majorId: [{ required: true, message: '所属专业不能为空', trigger: 'change' }],
   className: [{ required: true, message: '班级名称不能为空', trigger: 'blur' }],
-  gradeYear: [{ required: true, message: '年级不能为空', trigger: 'blur' }],
-  headTeacherId: [{ required: true, message: '班主任不能为空', trigger: 'blur' }]
+  gradeYear: [{ required: true, message: '年级不能为空', trigger: 'blur' }]
 }
 
 const classData = ref([])
@@ -167,18 +166,6 @@ const addUnitFormRules = computed(() => ({
       validator: (rule, value, callback) => {
         if (isAddUnitClass.value && !value) {
           callback(new Error('年级不能为空'))
-          return
-        }
-        callback()
-      }
-    }
-  ],
-  headTeacherId: [
-    {
-      trigger: 'blur',
-      validator: (rule, value, callback) => {
-        if (isAddUnitClass.value && !value) {
-          callback(new Error('班主任不能为空'))
           return
         }
         callback()
@@ -624,10 +611,6 @@ const handleTeacherReset = () => {
 }
 
 const handleTeacherDialogConfirm = () => {
-  if (!teacherSelectedId.value) {
-    showError(null, '请选择班主任')
-    return
-  }
   if (teacherDialogTarget.value === 'unit') {
     addUnitFormModel.value.headTeacherId = teacherSelectedId.value
     addUnitFormModel.value.headTeacher = teacherSelectedName.value
@@ -951,7 +934,7 @@ onMounted(() => {
             :disabled="!isAddUnitClass"
           />
         </el-form-item>
-        <el-form-item prop="headTeacherId" :required="isAddUnitClass">
+        <el-form-item prop="headTeacherId">
           <template #label>
             <span class="class-dialog__label">
               班主任

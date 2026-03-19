@@ -103,3 +103,10 @@ export function addStudentClassConfig(payload) {
     body: payload
   })
 }
+
+export function addStudentRoomConfig(payload) {
+  return request('/business/person/config/room/student/add', {
+    method: 'POST',
+    body: payload
+  })
+}

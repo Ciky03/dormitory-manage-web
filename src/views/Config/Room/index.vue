@@ -14,10 +14,11 @@ import {
   addRoom,
   deleteRoom,
   editRoom,
-  fetchBuildingList,
   fetchRoomForm,
-  fetchRoomList
+  fetchRoomList,
+  fetchRoomTreeList
 } from '../../../api/config/room'
+import { fetchDormitoryManagerList } from '../../../api/person'
 import { showError, showSuccess } from '../../../util/message/message'
 
 const keywords = ref('')
@@ -38,7 +39,9 @@ const addFormModel = ref({
   buildingNo: '',
   buildingId: '',
   roomNo: '',
-  capacity: ''
+  capacity: '',
+  dmId: '',
+  dmName: ''
 })
 
 const buildingList = ref([])
@@ -52,6 +55,18 @@ const addFormRules = computed(() => ({
       validator: (rule, value, callback) => {
         if (addDialogType.value === 'building' && !String(value || '').trim()) {
           callback(new Error('请输入楼栋号'))
+          return
+        }
+        callback()
+      }
+    }
+  ],
+  dmId: [
+    {
+      trigger: 'change',
+      validator: (rule, value, callback) => {
+        if (addDialogType.value === 'building' && !value) {
+          callback(new Error('请选择宿管'))
           return
         }
         callback()
@@ -108,6 +123,16 @@ const actionDialogMessage = computed(() => {
       : actionRow.value?.roomNum || ''
   return `您确定要删除【${label}】吗？`
 })
+
+const dmDialogVisible = ref(false)
+const dmLoading = ref(false)
+const dmKeywords = ref('')
+const dmList = ref([])
+const dmTotal = ref(0)
+const dmPage = ref(1)
+const dmPageSize = ref(10)
+const dmSelectedId = ref('')
+const dmSelectedName = ref('')
 
 const tableData = computed(() => roomList.value)
 
@@ -183,7 +208,9 @@ const resetAddForm = () => {
     buildingNo: '',
     buildingId: '',
     roomNo: '',
-    capacity: ''
+    capacity: '',
+    dmId: '',
+    dmName: ''
   }
 }
 
@@ -205,7 +232,8 @@ const buildAddPayload = () => {
       id: editId,
       parentId: '0000',
       roomNum: addFormModel.value.buildingNo?.trim() ?? '',
-      capacity: undefined
+      capacity: undefined,
+      dmId: addFormModel.value.dmId || undefined
     }
   }
   const capacityValue = Number(addFormModel.value.capacity)
@@ -266,6 +294,8 @@ watch(addDialogType, (type) => {
     addFormModel.value.capacity = ''
   } else {
     addFormModel.value.buildingNo = ''
+    addFormModel.value.dmId = ''
+    addFormModel.value.dmName = ''
   }
   nextTick(() => {
     addFormRef.value?.clearValidate?.()
@@ -287,11 +317,11 @@ const loadBuildingList = async (withLoading = true) => {
     loading.value = true
   }
   try {
-    const response = await fetchBuildingList()
+    const response = await fetchRoomTreeList()
     const list = normalizeList(response)
     buildingList.value = list.map((item) => ({
-      id: item?.key ?? item?.id ?? '',
-      buildingNo: item?.value ?? item?.buildingNo ?? item?.name ?? ''
+      id: item?.id ?? '',
+      buildingNo: item?.roomNum ?? item?.name ?? ''
     }))
   } catch (error) {
     buildingList.value = []
@@ -315,6 +345,67 @@ const normalizePage = (payload) => {
   const normalizedTotal =
     Number(data?.total ?? data?.count ?? normalizedList.length) || 0
   return { list: normalizedList, total: normalizedTotal }
+}
+
+const loadDormManagerList = async () => {
+  dmLoading.value = true
+  try {
+    const response = await fetchDormitoryManagerList({
+      keywords: dmKeywords.value,
+      pageNum: dmPage.value,
+      pageSize: dmPageSize.value
+    })
+    const normalized = normalizePage(response)
+    dmList.value = normalized.list
+    dmTotal.value = normalized.total
+  } catch (error) {
+    dmList.value = []
+    dmTotal.value = 0
+    showError(error, '获取宿管列表失败')
+  } finally {
+    dmLoading.value = false
+  }
+}
+
+const handleDmDialogOpen = () => {
+  dmSelectedId.value = addFormModel.value.dmId || ''
+  dmSelectedName.value = addFormModel.value.dmName || ''
+  dmPage.value = 1
+  dmDialogVisible.value = true
+  loadDormManagerList()
+}
+
+const handleDmSelect = (row) => {
+  if (!row) return
+  dmSelectedId.value = row.id || ''
+  dmSelectedName.value = row.realName || row.name || ''
+}
+
+const handleDmQuery = () => {
+  if (dmPage.value === 1) {
+    loadDormManagerList()
+    return
+  }
+  dmPage.value = 1
+}
+
+const handleDmReset = () => {
+  dmKeywords.value = ''
+  if (dmPage.value === 1) {
+    loadDormManagerList()
+    return
+  }
+  dmPage.value = 1
+}
+
+const handleDmDialogConfirm = () => {
+  if (!dmSelectedId.value) {
+    showError(null, '请选择宿管')
+    return
+  }
+  addFormModel.value.dmId = dmSelectedId.value
+  addFormModel.value.dmName = dmSelectedName.value
+  dmDialogVisible.value = false
 }
 
 const loadRoomList = async (withLoading = true) => {
@@ -357,6 +448,9 @@ const loadRoomForm = async (id, type) => {
     const data = normalizeForm(response)
     if (type === 'building') {
       addFormModel.value.buildingNo = data?.roomNum ?? ''
+      addFormModel.value.dmId = data?.dmId ?? ''
+      addFormModel.value.dmName =
+        data?.dmName ?? data?.dormitoryManagerName ?? data?.managerName ?? ''
     } else {
       addFormModel.value.buildingId = data?.parentId ?? ''
       addFormModel.value.roomNo = data?.roomNum ?? ''
@@ -378,6 +472,12 @@ onMounted(() => {
 
 watch([currentPage, pageSize], () => {
   loadRoomList()
+})
+
+watch([dmPage, dmPageSize], () => {
+  if (dmDialogVisible.value) {
+    loadDormManagerList()
+  }
 })
 </script>
 
@@ -496,6 +596,14 @@ watch([currentPage, pageSize], () => {
         <el-form-item v-if="addDialogType === 'building'" label="楼栋号" prop="buildingNo">
           <el-input v-model="addFormModel.buildingNo" placeholder="请输入楼栋号" />
         </el-form-item>
+        <el-form-item v-if="addDialogType === 'building'" label="宿管" prop="dmId">
+          <el-input
+            v-model="addFormModel.dmName"
+            placeholder="请选择宿管"
+            readonly
+            @click="handleDmDialogOpen"
+          />
+        </el-form-item>
         <template v-else>
           <el-form-item label="楼栋" prop="buildingId">
             <el-select
@@ -533,6 +641,65 @@ watch([currentPage, pageSize], () => {
       :message="actionDialogMessage"
       @confirm="handleDeleteConfirm"
     />
+
+    <el-dialog
+      v-model="dmDialogVisible"
+      width="860px"
+      align-center
+      title="选择宿管"
+      class="room-dialog"
+    >
+      <div class="room-dm-dialog" v-loading="dmLoading">
+        <div class="room-dm-dialog__search">
+          <SearchInput
+            v-model="dmKeywords"
+            label="关键字"
+            placeholder="宿管姓名/工号"
+            width="100%"
+            @enter="handleDmQuery"
+          />
+          <div class="room-dm-dialog__actions">
+            <QueryButton @click="handleDmQuery" />
+            <ResetButton @click="handleDmReset" />
+          </div>
+        </div>
+        <PageList
+          :data="dmList"
+          :total="dmTotal"
+          v-model:currentPage="dmPage"
+          v-model:pageSize="dmPageSize"
+          :table-props="{ border: true, onRowClick: handleDmSelect }"
+          table-height="100%"
+        >
+          <el-table-column label="" width="50" align="center">
+            <template #default="{ row }">
+              <el-radio
+                v-model="dmSelectedId"
+                :label="row.id"
+                class="room-dm-radio"
+                @change="handleDmSelect(row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="姓名" min-width="140">
+            <template #default="{ row }">
+              {{ row.realName || row.name || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="工号" min-width="140">
+            <template #default="{ row }">
+              {{ row.dmNum || '-' }}
+            </template>
+          </el-table-column>
+        </PageList>
+      </div>
+      <template #footer>
+        <div class="room-dialog__footer">
+          <CancelButton @click="dmDialogVisible = false" />
+          <ConfirmButton @click="handleDmDialogConfirm" />
+        </div>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -695,6 +862,38 @@ watch([currentPage, pageSize], () => {
 
 .room-dialog__select {
   width: 100%;
+}
+
+.room-dm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 520px;
+}
+
+.room-dm-dialog__search {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.room-dm-dialog__search > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.room-dm-dialog__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.room-dm-radio :deep(.el-radio__label) {
+  display: none;
+}
+
+.room-dm-dialog :deep(.table-card) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 @media (max-width: 1024px) {

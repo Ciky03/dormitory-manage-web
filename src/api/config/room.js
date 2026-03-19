@@ -23,8 +23,14 @@ export function editRoom(id, payload) {
   })
 }
 
-export function fetchBuildingList() {
-  return request('/business/room/building/list', { method: 'GET' })
+export function fetchRoomTreeList(params = {}) {
+  const query = buildQuery(params)
+  const path = query ? `/business/room/tree/list?${query}` : '/business/room/tree/list'
+  return request(path, { method: 'GET' })
+}
+
+export function fetchBuildingList(params = {}) {
+  return fetchRoomTreeList(params)
 }
 
 export function fetchRoomList(params = {}) {

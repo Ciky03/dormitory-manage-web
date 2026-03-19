@@ -16,11 +16,13 @@ import {
   deleteStudent,
   deleteTeacher,
   addStudentClassConfig,
+  addStudentRoomConfig,
   fetchDormitoryManagerList,
   fetchStudentList,
   fetchTeacherList
 } from '../../../api/person'
 import { fetchUnitTreeList } from '../../../api/config/class'
+import { fetchBuildingList } from '../../../api/config/room'
 import { showError, showSuccess } from '../../../util/message/message'
 
 const router = useRouter()
@@ -34,6 +36,11 @@ const classDialogLoading = ref(false)
 const classTreeSource = ref([])
 const classSelectedId = ref('')
 const classStudentRow = ref(null)
+const dormDialogVisible = ref(false)
+const dormDialogLoading = ref(false)
+const dormTreeSource = ref([])
+const dormSelectedId = ref('')
+const dormStudentRow = ref(null)
 const tabs = [
   { name: 'student', label: '学生' },
   { name: 'teacher', label: '教师' },
@@ -79,6 +86,16 @@ const mapTreeNodes = (nodes) =>
   }))
 
 const classTreeData = computed(() => mapTreeNodes(classTreeSource.value))
+
+const mapDormTreeNodes = (nodes) =>
+  (Array.isArray(nodes) ? nodes : []).map((node) => ({
+    label: node?.roomNum ?? '',
+    value: node?.id ?? '',
+    disabled: Array.isArray(node?.children) && node.children.length > 0,
+    children: mapDormTreeNodes(node?.children || [])
+  }))
+
+const dormTreeData = computed(() => mapDormTreeNodes(dormTreeSource.value))
 
 const findSelectedId = (nodes) => {
   const list = Array.isArray(nodes) ? nodes : []
@@ -231,9 +248,48 @@ const handleClassConfigConfirm = () => {
     })
 }
 
-const handleDormConfigOpen = (row) => {
-  if (!row) return
-  showError(null, '宿舍配置暂未接入')
+const handleDormConfigOpen = async (row) => {
+  dormStudentRow.value = { ...(row || {}), type: activeName.value }
+  dormSelectedId.value = ''
+  dormDialogVisible.value = true
+  dormDialogLoading.value = true
+  try {
+    const response = await fetchBuildingList({
+      queryAll: true,
+      studentId: row?.id ?? ''
+    })
+    const list = normalizeList(response)
+    dormTreeSource.value = list
+    const selectedId = findSelectedId(list)
+    dormSelectedId.value = selectedId || ''
+  } catch (error) {
+    dormTreeSource.value = []
+    showError(error, '获取宿舍列表失败')
+  } finally {
+    dormDialogLoading.value = false
+  }
+}
+
+const handleDormConfigConfirm = () => {
+  const studentId = dormStudentRow.value?.id
+  const roomId = dormSelectedId.value
+  if (!studentId || !roomId) {
+    showError(null, '请选择宿舍')
+    return
+  }
+  dormDialogLoading.value = true
+  addStudentRoomConfig({ studentId, roomId })
+    .then(() => {
+      showSuccess('配置成功')
+      dormDialogVisible.value = false
+      return loadList(activeName.value)
+    })
+    .catch((error) => {
+      showError(error, '配置失败')
+    })
+    .finally(() => {
+      dormDialogLoading.value = false
+    })
 }
 
 watch(activeName, (name) => {
@@ -301,6 +357,11 @@ onMounted(() => {
                   {{ row.className || '-' }}
                 </template>
               </el-table-column>
+              <el-table-column label="宿舍" min-width="160">
+                <template #default="{ row }">
+                  {{ row.roomName || '-' }}
+                </template>
+              </el-table-column>
               <el-table-column label="入学年份" min-width="120">
                 <template #default="{ row }">
                   {{ row.admissionYear ?? '-' }}
@@ -334,6 +395,11 @@ onMounted(() => {
                 <el-table-column label="工号" min-width="140">
                   <template #default="{ row }">
                     {{ row.teacherNum || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="任教班级" min-width="180">
+                  <template #default="{ row }">
+                    {{ row.teachingClass || '-' }}
                   </template>
                 </el-table-column>
                 <el-table-column label="入职日期" min-width="160">
@@ -393,6 +459,31 @@ onMounted(() => {
       <div class="person-class-dialog__footer">
         <CancelButton @click="classDialogVisible = false" />
         <ConfirmButton @click="handleClassConfigConfirm" />
+      </div>
+    </template>
+  </el-dialog>
+  <el-dialog
+    v-model="dormDialogVisible"
+    width="520px"
+    align-center
+    title="宿舍配置"
+    class="person-class-dialog"
+  >
+    <div v-loading="dormDialogLoading">
+      <el-tree-select
+        v-model="dormSelectedId"
+        :data="dormTreeData"
+        :props="treeSelectProps"
+        placeholder="请选择宿舍"
+        clearable
+        check-strictly
+        class="person-class-select"
+      />
+    </div>
+    <template #footer>
+      <div class="person-class-dialog__footer">
+        <CancelButton @click="dormDialogVisible = false" />
+        <ConfirmButton @click="handleDormConfigConfirm" />
       </div>
     </template>
   </el-dialog>

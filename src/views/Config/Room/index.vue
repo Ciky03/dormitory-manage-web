@@ -309,7 +309,8 @@ const loadBuildingList = async (withLoading = true) => {
     const list = normalizeList(response)
     buildingList.value = list.map((item) => ({
       id: item?.id ?? '',
-      buildingNo: item?.roomNum ?? item?.name ?? ''
+      buildingNo: item?.roomNum ?? item?.name ?? '',
+      dmName: item?.dmName ?? item?.dormitoryManagerName ?? item?.managerName ?? ''
     }))
   } catch (error) {
     buildingList.value = []
@@ -486,7 +487,10 @@ watch([dmPage, dmPageSize], () => {
             :class="{ 'room-building__item--active': building.id === selectedBuildingId }"
             @click="handleSelectBuilding(building)"
           >
-            <span class="room-building__label">{{ building.buildingNo || '-' }}</span>
+            <div class="room-building__info">
+              <span class="room-building__label">{{ building.buildingNo || '-' }}</span>
+              <span class="room-building__meta">{{ building.dmName || '-' }}</span>
+            </div>
             <span class="room-building__actions">
               <button
                 class="room-building__icon"
@@ -714,7 +718,7 @@ watch([dmPage, dmPageSize], () => {
 }
 
 .room-building {
-  width: 220px;
+  width: 280px;
   background: #ffffff;
   padding: 12px;
   display: flex;
@@ -759,8 +763,27 @@ watch([dmPage, dmPageSize], () => {
 }
 
 .room-building__label {
-  flex: 1 1 auto;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-building__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
+}
+
+.room-building__meta {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 }
 
 .room-building__actions {

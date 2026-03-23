@@ -414,6 +414,11 @@ onMounted(() => {
                     {{ row.dmNum || '-' }}
                   </template>
                 </el-table-column>
+                <el-table-column label="负责楼栋" min-width="160">
+                  <template #default="{ row }">
+                    {{ row.building || '-' }}
+                  </template>
+                </el-table-column>
                 <el-table-column label="入职日期" min-width="160">
                   <template #default="{ row }">
                     {{ row.entryDate || '-' }}

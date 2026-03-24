@@ -98,14 +98,14 @@ export function deleteDormitoryManager(id) {
 }
 
 export function addStudentClassConfig(payload) {
-  return request('/business/person/config/class/student/add', {
+  return request('/business/person/class/student/add', {
     method: 'POST',
     body: payload
   })
 }
 
 export function addStudentRoomConfig(payload) {
-  return request('/business/person/config/room/student/add', {
+  return request('/business/person/room/student/add', {
     method: 'POST',
     body: payload
   })

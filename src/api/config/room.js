@@ -10,14 +10,14 @@ const buildQuery = (params = {}) => {
 }
 
 export function addRoom(payload) {
-  return request('/business/room/add', {
+  return request('/business/dormitory/add', {
     method: 'POST',
     body: payload
   })
 }
 
 export function editRoom(id, payload) {
-  return request(`/business/room/edit/${id}`, {
+  return request(`/business/dormitory/edit/${id}`, {
     method: 'PUT',
     body: payload
   })
@@ -25,7 +25,7 @@ export function editRoom(id, payload) {
 
 export function fetchRoomTreeList(params = {}) {
   const query = buildQuery(params)
-  const path = query ? `/business/room/tree/list?${query}` : '/business/room/tree/list'
+  const path = query ? `/business/dormitory/tree/list?${query}` : '/business/dormitory/tree/list'
   return request(path, { method: 'GET' })
 }
 
@@ -35,14 +35,14 @@ export function fetchBuildingList(params = {}) {
 
 export function fetchRoomList(params = {}) {
   const query = buildQuery(params)
-  const path = query ? `/business/room/list?${query}` : '/business/room/list'
+  const path = query ? `/business/dormitory/list?${query}` : '/business/dormitory/list'
   return request(path, { method: 'GET' })
 }
 
 export function deleteRoom(id) {
-  return request(`/business/room/del/${id}`, { method: 'DELETE' })
+  return request(`/business/dormitory/del/${id}`, { method: 'DELETE' })
 }
 
 export function fetchRoomForm(id) {
-  return request(`/business/room/form/${id}`, { method: 'GET' })
+  return request(`/business/dormitory/form/${id}`, { method: 'GET' })
 }

@@ -11,34 +11,34 @@ const buildQuery = (params = {}) => {
 
 export function fetchUnitTreeList(params = {}) {
   const query = buildQuery(params)
-  const path = query ? `/business/unit/tree/list?${query}` : '/business/unit/tree/list'
+  const path = query ? `/business/edu/tree/list?${query}` : '/business/edu/tree/list'
   return request(path, { method: 'GET' })
 }
 
 export function fetchClassList(params = {}) {
   const query = buildQuery(params)
-  const path = query ? `/business/unit/class/list?${query}` : '/business/unit/class/list'
+  const path = query ? `/business/edu/class/list?${query}` : '/business/edu/class/list'
   return request(path, { method: 'GET' })
 }
 
 export function addUnit(payload) {
-  return request('/business/unit/add', {
+  return request('/business/edu/add', {
     method: 'POST',
     body: payload
   })
 }
 
 export function fetchUnitForm(id) {
-  return request(`/business/unit/form/${id}`, { method: 'GET' })
+  return request(`/business/edu/form/${id}`, { method: 'GET' })
 }
 
 export function editUnit(id, payload) {
-  return request(`/business/unit/edit/${id}`, {
+  return request(`/business/edu/edit/${id}`, {
     method: 'PUT',
     body: payload
   })
 }
 
 export function deleteUnit(id) {
-  return request(`/business/unit/del/${id}`, { method: 'DELETE' })
+  return request(`/business/edu/del/${id}`, { method: 'DELETE' })
 }

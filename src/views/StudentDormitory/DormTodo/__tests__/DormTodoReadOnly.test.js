@@ -1,0 +1,120 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const testContext = vi.hoisted(() => ({
+  loadBootstrap: vi.fn(),
+  state: {
+    stat: {
+      data: {
+        roomId: 'room-1',
+        buildingNum: '6A',
+        roomNum: '302',
+        totalCount: 12,
+        pendingCount: 4,
+        processingCount: 5,
+        weekCompletedCount: 3
+      }
+    },
+    filters: {
+      keywords: '',
+      status: '',
+      priority: '',
+      assigneeStudentId: '',
+      dueType: '',
+      onlyMine: false,
+      pageNum: 1,
+      pageSize: 10
+    },
+    assigneeOptions: {
+      data: [{ label: '\u5168\u90e8', value: '' }]
+    },
+    list: {
+      loading: false,
+      items: [
+        {
+          id: 'todo-1',
+          title: '\u5468\u672b\u536b\u751f\u8f6e\u503c',
+          priorityLabel: '\u9ad8',
+          statusLabel: '\u8fdb\u884c\u4e2d',
+          assigneeName: '',
+          creatorName: '\u738b\u6668',
+          dueTime: '2026-03-27 21:00',
+          summary: '\u6e05\u7406\u516c\u5171\u533a',
+          overdue: false
+        }
+      ],
+      total: 1
+    },
+    detail: {
+      visible: true,
+      loading: false,
+      data: {
+        id: 'todo-1',
+        title: '\u5468\u672b\u536b\u751f\u8f6e\u503c',
+        content: '\u6e05\u7406\u516c\u5171\u533a',
+        priorityLabel: '\u9ad8',
+        statusLabel: '\u8fdb\u884c\u4e2d',
+        assigneeName: '',
+        creatorName: '\u738b\u6668',
+        dueTime: '2026-03-27 21:00',
+        startTime: '',
+        completedTime: '',
+        completedByName: '',
+        cancelReason: ''
+      },
+      comments: [],
+      commentLoading: false
+    },
+    ui: {
+      pageLoading: false
+    }
+  }
+}))
+
+vi.mock('../useDormTodoPage', () => ({
+  createDormTodoPageModel: () => ({
+    state: testContext.state,
+    loadBootstrap: testContext.loadBootstrap,
+    loadList: vi.fn(),
+    updateFilters: vi.fn(),
+    handleReset: vi.fn(),
+    handleSelectTodo: vi.fn(),
+    handlePageChange: vi.fn(),
+    handlePageSizeChange: vi.fn(),
+    handleCloseDetail: vi.fn()
+  })
+}))
+
+describe('DormTodo read-only page', () => {
+  beforeEach(() => {
+    testContext.loadBootstrap.mockReset()
+  })
+
+  it('renders the read-only shell without write actions', async () => {
+    const { default: DormTodoPage } = await import('../index.vue')
+    const wrapper = mount(DormTodoPage, {
+      global: {
+        stubs: {
+          teleport: true,
+          transition: false,
+          ElDrawer: {
+            props: ['modelValue'],
+            template: '<div v-if="modelValue"><slot /></div>'
+          }
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const pageText = wrapper.text()
+
+    expect(testContext.loadBootstrap).toHaveBeenCalled()
+    expect(pageText).toContain('6A-302')
+    expect(pageText).toContain('\u5468\u672b\u536b\u751f\u8f6e\u503c')
+    expect(pageText).toContain('\u6682\u65e0\u8bc4\u8bba')
+    expect(pageText).not.toContain('\u65b0\u5efa\u5f85\u529e')
+    expect(pageText).not.toContain('\u5f00\u59cb\u5904\u7406')
+    expect(pageText).not.toContain('\u53d1\u8868\u8bc4\u8bba')
+  })
+})

@@ -84,6 +84,10 @@ export function createDormTodoPageModel(deps = {}) {
     pageSize: state.filters.pageSize
   })
 
+  const updateFilters = (nextFilters = {}) => {
+    Object.assign(state.filters, nextFilters)
+  }
+
   const loadStat = async () => {
     state.stat.loading = true
     try {
@@ -124,6 +128,31 @@ export function createDormTodoPageModel(deps = {}) {
     }
   }
 
+  const handleReset = async () => {
+    Object.assign(state.filters, createInitialState().filters)
+    await loadList()
+  }
+
+  const handlePageChange = async (pageNum) => {
+    state.filters.pageNum = Number(pageNum) || 1
+    await loadList()
+  }
+
+  const handlePageSizeChange = async (pageSize) => {
+    state.filters.pageSize = Number(pageSize) || 10
+    state.filters.pageNum = 1
+    await loadList()
+  }
+
+  const handleCloseDetail = () => {
+    state.detail.visible = false
+    state.detail.loading = false
+    state.detail.data = null
+    state.detail.comments = []
+    state.detail.commentLoading = false
+    state.list.selectedId = ''
+  }
+
   const loadBootstrap = async () => {
     state.ui.pageLoading = true
     await Promise.all([loadStat(), loadList(), loadAssigneeOptions()])
@@ -133,7 +162,12 @@ export function createDormTodoPageModel(deps = {}) {
   return {
     state,
     buildListParams,
+    updateFilters,
     loadList,
-    loadBootstrap
+    loadBootstrap,
+    handleReset,
+    handlePageChange,
+    handlePageSizeChange,
+    handleCloseDetail
   }
 }

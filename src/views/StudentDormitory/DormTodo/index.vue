@@ -4,6 +4,7 @@ import { createDormTodoPageModel } from './useDormTodoPage'
 import DormTodoCardList from './components/DormTodoCardList.vue'
 import DormTodoDetailDrawer from './components/DormTodoDetailDrawer.vue'
 import DormTodoFilters from './components/DormTodoFilters.vue'
+import DormTodoFormDialog from './components/DormTodoFormDialog.vue'
 import DormTodoOverview from './components/DormTodoOverview.vue'
 
 const model = createDormTodoPageModel()
@@ -15,7 +16,7 @@ onMounted(() => {
 
 <template>
   <section class="dorm-todo-page" v-loading="model.state.ui.pageLoading">
-    <DormTodoOverview :stat="model.state.stat.data" :show-create="false" />
+    <DormTodoOverview :stat="model.state.stat.data" :show-create="true" @create="model.openCreate" />
 
     <div class="page-layout">
       <div class="page-main">
@@ -45,10 +46,28 @@ onMounted(() => {
       :todo="model.state.detail.data"
       :comments="model.state.detail.comments"
       :comment-loading="model.state.detail.commentLoading"
-      :show-actions="false"
+      :show-actions="true"
       :show-comment-composer="false"
+      :start-loading="model.state.ui.startLoading"
+      :complete-loading="model.state.ui.completeLoading"
+      :cancel-loading="model.state.ui.cancelLoading"
       @close="model.handleCloseDetail"
       @refresh-comments="model.loadComments()"
+      @edit="model.openEdit"
+      @start="model.handleStart"
+      @complete="model.handleComplete"
+      @cancel="model.handleCancel"
+    />
+
+    <DormTodoFormDialog
+      :visible="model.state.ui.formVisible"
+      :mode="model.state.ui.formMode"
+      :form="model.state.form"
+      :assignee-options="model.state.assigneeOptions.data"
+      :loading="model.state.ui.submitLoading"
+      @close="model.closeForm"
+      @submit="model.submitForm"
+      @update:form="model.updateForm"
     />
   </section>
 </template>

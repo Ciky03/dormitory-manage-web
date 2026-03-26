@@ -3,6 +3,15 @@ import * as dormTodoApi from '../../../api/student/dormTodo'
 import { showError } from '../../../util/message/message'
 import { getCurrentUser } from '../../../util/user'
 
+const createEmptyForm = () => ({
+  id: '',
+  title: '',
+  content: '',
+  priority: '2',
+  assigneeStudentId: '',
+  dueTime: ''
+})
+
 const createInitialState = () => ({
   stat: {
     loading: false,
@@ -43,14 +52,7 @@ const createInitialState = () => ({
     comments: [],
     commentLoading: false
   },
-  form: {
-    id: '',
-    title: '',
-    content: '',
-    priority: '2',
-    assigneeStudentId: '',
-    dueTime: ''
-  },
+  form: createEmptyForm(),
   commentDraft: '',
   ui: {
     pageLoading: false,
@@ -86,6 +88,14 @@ export function createDormTodoPageModel(deps = {}) {
 
   const updateFilters = (nextFilters = {}) => {
     Object.assign(state.filters, nextFilters)
+  }
+
+  const updateForm = (nextForm = {}) => {
+    Object.assign(state.form, nextForm)
+  }
+
+  const closeForm = () => {
+    state.ui.formVisible = false
   }
 
   const loadStat = async () => {
@@ -161,6 +171,105 @@ export function createDormTodoPageModel(deps = {}) {
     }
   }
 
+  const refreshAfterMutation = async () => {
+    const tasks = [loadStat(), loadList()]
+    if (state.list.selectedId) {
+      tasks.push(handleSelectTodo({ id: state.list.selectedId }))
+    }
+    await Promise.all(tasks)
+  }
+
+  const openCreate = () => {
+    Object.assign(state.form, createEmptyForm())
+    state.ui.formMode = 'create'
+    state.ui.formVisible = true
+  }
+
+  const openEdit = () => {
+    if (!state.detail.data) return
+    Object.assign(state.form, {
+      id: state.detail.data.id,
+      title: state.detail.data.title || '',
+      content: state.detail.data.content || '',
+      priority: String(state.detail.data.priority || '2'),
+      assigneeStudentId: state.detail.data.assigneeStudentId || '',
+      dueTime: state.detail.data.dueTime || ''
+    })
+    state.ui.formMode = 'edit'
+    state.ui.formVisible = true
+  }
+
+  const submitForm = async () => {
+    const payload = {
+      title: String(state.form.title || '').trim(),
+      content: String(state.form.content || '').trim(),
+      priority: state.form.priority,
+      assigneeStudentId: state.form.assigneeStudentId || '',
+      dueTime: state.form.dueTime
+    }
+    state.ui.submitLoading = true
+    try {
+      if (state.ui.formMode === 'edit') {
+        await api.editDormTodo(state.form.id, payload)
+      } else {
+        await api.addDormTodo(payload)
+      }
+      state.ui.formVisible = false
+      await Promise.all([loadStat(), loadList()])
+      if (state.list.selectedId) {
+        await handleSelectTodo({ id: state.list.selectedId })
+      }
+    } catch (error) {
+      onError(error, state.ui.formMode === 'edit' ? '编辑待办失败' : '新建待办失败')
+    } finally {
+      state.ui.submitLoading = false
+    }
+  }
+
+  const handleStart = async () => {
+    if (!state.list.selectedId) return
+    state.ui.startLoading = true
+    try {
+      await api.startDormTodo(state.list.selectedId)
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error)
+    } finally {
+      state.ui.startLoading = false
+    }
+  }
+
+  const handleComplete = async () => {
+    if (!state.list.selectedId) return
+    state.ui.completeLoading = true
+    try {
+      await api.completeDormTodo(state.list.selectedId)
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error)
+    } finally {
+      state.ui.completeLoading = false
+    }
+  }
+
+  const handleCancel = async (cancelReason) => {
+    const reason = String(cancelReason || '').trim()
+    if (!reason) {
+      onError(null, '取消原因不能为空')
+      return
+    }
+    if (!state.list.selectedId) return
+    state.ui.cancelLoading = true
+    try {
+      await api.cancelDormTodo(state.list.selectedId, { cancelReason: reason })
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error)
+    } finally {
+      state.ui.cancelLoading = false
+    }
+  }
+
   const handleReset = async () => {
     Object.assign(state.filters, createInitialState().filters)
     await loadList()
@@ -196,10 +305,18 @@ export function createDormTodoPageModel(deps = {}) {
     state,
     buildListParams,
     updateFilters,
+    updateForm,
+    closeForm,
     loadList,
     loadComments,
     loadBootstrap,
+    openCreate,
+    openEdit,
+    submitForm,
     handleSelectTodo,
+    handleStart,
+    handleComplete,
+    handleCancel,
     handleReset,
     handlePageChange,
     handlePageSizeChange,

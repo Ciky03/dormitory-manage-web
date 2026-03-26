@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch } from 'vue'
 import DormTodoCommentTimeline from './DormTodoCommentTimeline.vue'
 
 const props = defineProps({
@@ -8,10 +9,22 @@ const props = defineProps({
   comments: { type: Array, default: () => [] },
   commentLoading: { type: Boolean, default: false },
   showActions: { type: Boolean, default: false },
-  showCommentComposer: { type: Boolean, default: false }
+  showCommentComposer: { type: Boolean, default: false },
+  startLoading: { type: Boolean, default: false },
+  completeLoading: { type: Boolean, default: false },
+  cancelLoading: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['close', 'refresh-comments'])
+const emit = defineEmits(['close', 'refresh-comments', 'edit', 'start', 'complete', 'cancel'])
+const cancelReason = ref('')
+
+watch(
+  () => [props.visible, props.todo?.id],
+  () => {
+    cancelReason.value = ''
+  },
+  { immediate: true }
+)
 
 const displayText = (value, fallback = '-') => {
   if (value === undefined || value === null || value === '') return fallback
@@ -75,7 +88,15 @@ const displayText = (value, fallback = '-') => {
           </dl>
         </el-card>
 
-        <div v-if="showActions" class="detail-actions"></div>
+        <div v-if="showActions" class="detail-actions">
+          <el-button v-if="todo.canEdit" @click="emit('edit')">编辑</el-button>
+          <el-button v-if="todo.canStart" type="primary" :loading="startLoading" @click="emit('start')">开始处理</el-button>
+          <el-button v-if="todo.canComplete" type="success" :loading="completeLoading" @click="emit('complete')">完成</el-button>
+          <div v-if="todo.canCancel" class="cancel-box">
+            <el-input v-model="cancelReason" placeholder="请输入取消原因" clearable />
+            <el-button type="danger" :loading="cancelLoading" @click="emit('cancel', cancelReason)">取消</el-button>
+          </div>
+        </div>
 
         <el-card class="detail-card" shadow="never">
           <template #header>
@@ -155,6 +176,16 @@ const displayText = (value, fallback = '-') => {
 
 .detail-span-full {
   grid-column: 1 / -1;
+}
+
+.detail-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.cancel-box {
+  display: grid;
+  gap: 8px;
 }
 
 .comment-header {

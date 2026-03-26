@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import * as dormTodoApi from '../../../api/student/dormTodo'
 import { showError } from '../../../util/message/message'
 import { getCurrentUser } from '../../../util/user'
 
@@ -66,7 +67,7 @@ const createInitialState = () => ({
 const resolveCurrentStudentId = (user) => String(user?.studentId ?? user?.id ?? '')
 
 export function createDormTodoPageModel(deps = {}) {
-  const api = deps.api ?? {}
+  const api = deps.api ?? dormTodoApi
   const readCurrentUser = deps.getCurrentUser ?? getCurrentUser
   const onError = deps.showError ?? showError
   const state = reactive(createInitialState())

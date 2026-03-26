@@ -48,6 +48,7 @@ onMounted(() => {
       :show-actions="false"
       :show-comment-composer="false"
       @close="model.handleCloseDetail"
+      @refresh-comments="model.loadComments()"
     />
   </section>
 </template>

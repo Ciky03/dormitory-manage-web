@@ -11,7 +11,7 @@ const props = defineProps({
   showCommentComposer: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'refresh-comments'])
 
 const displayText = (value, fallback = '-') => {
   if (value === undefined || value === null || value === '') return fallback
@@ -78,7 +78,12 @@ const displayText = (value, fallback = '-') => {
         <div v-if="showActions" class="detail-actions"></div>
 
         <el-card class="detail-card" shadow="never">
-          <template #header>评论时间线</template>
+          <template #header>
+            <div class="comment-header">
+              <span>评论时间线</span>
+              <el-button link type="primary" @click="emit('refresh-comments')">刷新评论</el-button>
+            </div>
+          </template>
           <DormTodoCommentTimeline :comments="comments" :loading="commentLoading" />
           <div v-if="showCommentComposer" class="comment-composer"></div>
         </el-card>
@@ -152,9 +157,21 @@ const displayText = (value, fallback = '-') => {
   grid-column: 1 / -1;
 }
 
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 @media (max-width: 640px) {
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .comment-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

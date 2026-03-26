@@ -128,6 +128,39 @@ export function createDormTodoPageModel(deps = {}) {
     }
   }
 
+  const loadComments = async (todoId = state.list.selectedId) => {
+    if (!todoId) return
+    state.detail.commentLoading = true
+    try {
+      state.detail.comments = await api.fetchDormTodoCommentList(todoId)
+    } catch (error) {
+      onError(error, '加载评论失败')
+      state.detail.comments = []
+    } finally {
+      state.detail.commentLoading = false
+    }
+  }
+
+  const handleSelectTodo = async (item) => {
+    const todoId = item?.id
+    if (!todoId) return
+    state.list.selectedId = todoId
+    state.detail.visible = true
+    state.detail.loading = true
+    state.detail.comments = []
+    try {
+      const detail = await api.fetchDormTodoDetail(todoId)
+      state.detail.data = detail
+      state.detail.comments = Array.isArray(detail?.commentList) ? detail.commentList : []
+    } catch (error) {
+      onError(error, '加载待办详情失败')
+      state.detail.data = null
+      state.detail.comments = []
+    } finally {
+      state.detail.loading = false
+    }
+  }
+
   const handleReset = async () => {
     Object.assign(state.filters, createInitialState().filters)
     await loadList()
@@ -164,7 +197,9 @@ export function createDormTodoPageModel(deps = {}) {
     buildListParams,
     updateFilters,
     loadList,
+    loadComments,
     loadBootstrap,
+    handleSelectTodo,
     handleReset,
     handlePageChange,
     handlePageSizeChange,

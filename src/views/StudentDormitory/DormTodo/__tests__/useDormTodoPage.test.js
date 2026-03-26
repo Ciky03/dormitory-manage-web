@@ -17,16 +17,16 @@ describe('createDormTodoPageModel', () => {
         list: [
           {
             id: 'todo-1',
-            title: '周末卫生轮值',
-            summary: '清理公共区',
+            title: 'Weekend cleanup',
+            summary: 'Clean the shared area',
             priority: 3,
-            priorityLabel: '高',
+            priorityLabel: 'High',
             status: 1,
-            statusLabel: '进行中',
+            statusLabel: 'In Progress',
             assigneeStudentId: 'stu-1',
-            assigneeName: '李明',
+            assigneeName: 'Li Ming',
             creatorStudentId: 'stu-2',
-            creatorName: '王晨',
+            creatorName: 'Wang Chen',
             dueTime: '2026-03-27 21:00',
             createTime: '2026-03-26 12:00',
             overdue: false
@@ -34,7 +34,7 @@ describe('createDormTodoPageModel', () => {
         ],
         total: 1
       }),
-      fetchDormTodoAssigneeOptions: vi.fn().mockResolvedValue([{ label: '李明', value: 'stu-1' }])
+      fetchDormTodoAssigneeOptions: vi.fn().mockResolvedValue([{ label: 'Li Ming', value: 'stu-1' }])
     }
 
     const model = createDormTodoPageModel({ api, getCurrentUser: () => ({ id: 'stu-1' }) })
@@ -50,8 +50,8 @@ describe('createDormTodoPageModel', () => {
       pageSize: 10
     })
     expect(model.state.assigneeOptions.data).toEqual([
-      { label: '全部', value: '' },
-      { label: '李明', value: 'stu-1' }
+      { label: '\u5168\u90e8', value: '' },
+      { label: 'Li Ming', value: 'stu-1' }
     ])
   })
 
@@ -83,5 +83,66 @@ describe('createDormTodoPageModel', () => {
       pageNum: 1,
       pageSize: 10
     })
+  })
+
+  it('uses detail.commentList first and refreshes comments independently', async () => {
+    const api = {
+      fetchDormTodoStat: vi.fn().mockResolvedValue({
+        roomId: 'room-1',
+        buildingNum: '6A',
+        roomNum: '302',
+        totalCount: 0,
+        pendingCount: 0,
+        processingCount: 0,
+        weekCompletedCount: 0
+      }),
+      fetchDormTodoList: vi.fn().mockResolvedValue({ list: [], total: 0 }),
+      fetchDormTodoAssigneeOptions: vi.fn().mockResolvedValue([]),
+      fetchDormTodoDetail: vi.fn().mockResolvedValue({
+        id: 'todo-1',
+        title: 'Weekend cleanup',
+        content: 'Clean the shared area',
+        priorityLabel: 'High',
+        statusLabel: 'In Progress',
+        assigneeName: '',
+        creatorName: 'Wang Chen',
+        dueTime: '2026-03-27 21:00',
+        startTime: '',
+        completedTime: '',
+        completedByName: '',
+        cancelReason: '',
+        canEdit: false,
+        canStart: false,
+        canComplete: false,
+        canCancel: false,
+        commentList: [
+          {
+            id: 'comment-1',
+            todoId: 'todo-1',
+            commenterName: 'Li Ming',
+            content: 'I will handle it tonight',
+            createTime: '2026-03-26 20:00'
+          }
+        ]
+      }),
+      fetchDormTodoCommentList: vi.fn().mockResolvedValue([
+        {
+          id: 'comment-2',
+          todoId: 'todo-1',
+          commenterName: 'Wang Chen',
+          content: 'I can cover the floor cleaning',
+          createTime: '2026-03-26 21:00'
+        }
+      ])
+    }
+
+    const model = createDormTodoPageModel({ api, getCurrentUser: () => ({ id: 'stu-1' }) })
+
+    await model.handleSelectTodo({ id: 'todo-1' })
+    expect(model.state.detail.comments).toHaveLength(1)
+
+    await model.loadComments('todo-1')
+    expect(api.fetchDormTodoCommentList).toHaveBeenCalledWith('todo-1')
+    expect(model.state.detail.comments[0].id).toBe('comment-2')
   })
 })

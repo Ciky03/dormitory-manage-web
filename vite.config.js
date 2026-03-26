@@ -1,13 +1,10 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
   server: {
-    allowedHosts: [
-      'c76945e.r38.cpolar.top'
-    ],
+    allowedHosts: ['c76945e.r38.cpolar.top'],
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:9990',
@@ -15,5 +12,10 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.js']
   }
 })

@@ -11,6 +11,7 @@ import ClassPage from '../views/Config/Class/index.vue'
 import RoomPage from '../views/Config/Room/index.vue'
 import ConfigPersonPage from '../views/Config/Person/index.vue'
 import ConfigPersonFormPage from '../views/Config/Person/form.vue'
+import DormitoryConventionPage from '../views/StudentDormitory/Convention/index.vue'
 import NotFoundPage from '../views/NotFound/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
@@ -81,6 +82,12 @@ const routes = [
         name: 'PersonForm',
         component: ConfigPersonFormPage,
         meta: { title: '新增人员' }
+      },
+      {
+        path: 'student/dormitory/convention',
+        name: 'StudentDormitoryConvention',
+        component: DormitoryConventionPage,
+        meta: { title: '宿舍公约' }
       }
     ]
   },

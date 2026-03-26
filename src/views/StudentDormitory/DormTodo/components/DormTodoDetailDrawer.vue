@@ -12,10 +12,21 @@ const props = defineProps({
   showCommentComposer: { type: Boolean, default: false },
   startLoading: { type: Boolean, default: false },
   completeLoading: { type: Boolean, default: false },
-  cancelLoading: { type: Boolean, default: false }
+  cancelLoading: { type: Boolean, default: false },
+  commentDraft: { type: String, default: '' },
+  commentSubmitting: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['close', 'refresh-comments', 'edit', 'start', 'complete', 'cancel'])
+const emit = defineEmits([
+  'close',
+  'refresh-comments',
+  'edit',
+  'start',
+  'complete',
+  'cancel',
+  'update:commentDraft',
+  'submit-comment'
+])
 const cancelReason = ref('')
 
 watch(
@@ -106,7 +117,18 @@ const displayText = (value, fallback = '-') => {
             </div>
           </template>
           <DormTodoCommentTimeline :comments="comments" :loading="commentLoading" />
-          <div v-if="showCommentComposer" class="comment-composer"></div>
+          <div v-if="showCommentComposer" class="comment-composer">
+            <el-input
+              :model-value="commentDraft"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入评论"
+              @update:model-value="emit('update:commentDraft', $event)"
+            />
+            <div class="comment-submit-row">
+              <el-button type="primary" :loading="commentSubmitting" @click="emit('submit-comment')">发表评论</el-button>
+            </div>
+          </div>
         </el-card>
       </template>
       <el-empty v-else description="请选择待办查看详情" />
@@ -195,6 +217,17 @@ const displayText = (value, fallback = '-') => {
   gap: 12px;
 }
 
+.comment-composer {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.comment-submit-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (max-width: 640px) {
   .detail-grid {
     grid-template-columns: 1fr;
@@ -203,6 +236,14 @@ const displayText = (value, fallback = '-') => {
   .comment-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .comment-submit-row {
+    justify-content: stretch;
+  }
+
+  .comment-submit-row :deep(.el-button) {
+    width: 100%;
   }
 }
 </style>

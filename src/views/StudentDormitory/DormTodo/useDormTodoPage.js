@@ -94,6 +94,10 @@ export function createDormTodoPageModel(deps = {}) {
     Object.assign(state.form, nextForm)
   }
 
+  const updateCommentDraft = (value = '') => {
+    state.commentDraft = String(value || '')
+  }
+
   const closeForm = () => {
     state.ui.formVisible = false
   }
@@ -158,6 +162,7 @@ export function createDormTodoPageModel(deps = {}) {
     state.detail.visible = true
     state.detail.loading = true
     state.detail.comments = []
+    state.commentDraft = ''
     try {
       const detail = await api.fetchDormTodoDetail(todoId)
       state.detail.data = detail
@@ -270,6 +275,28 @@ export function createDormTodoPageModel(deps = {}) {
     }
   }
 
+  const submitComment = async (content = state.commentDraft) => {
+    const text = String(content || '').trim()
+    if (!text) {
+      onError(null, '评论内容不能为空')
+      return
+    }
+    if (!state.list.selectedId) return
+    state.ui.commentSubmitting = true
+    try {
+      await api.addDormTodoComment({
+        todoId: state.list.selectedId,
+        content: text
+      })
+      state.commentDraft = ''
+      await loadComments(state.list.selectedId)
+    } catch (error) {
+      onError(error, '评论失败')
+    } finally {
+      state.ui.commentSubmitting = false
+    }
+  }
+
   const handleReset = async () => {
     Object.assign(state.filters, createInitialState().filters)
     await loadList()
@@ -293,6 +320,7 @@ export function createDormTodoPageModel(deps = {}) {
     state.detail.comments = []
     state.detail.commentLoading = false
     state.list.selectedId = ''
+    state.commentDraft = ''
   }
 
   const loadBootstrap = async () => {
@@ -306,6 +334,7 @@ export function createDormTodoPageModel(deps = {}) {
     buildListParams,
     updateFilters,
     updateForm,
+    updateCommentDraft,
     closeForm,
     loadList,
     loadComments,
@@ -313,6 +342,7 @@ export function createDormTodoPageModel(deps = {}) {
     openCreate,
     openEdit,
     submitForm,
+    submitComment,
     handleSelectTodo,
     handleStart,
     handleComplete,

@@ -47,16 +47,20 @@ onMounted(() => {
       :comments="model.state.detail.comments"
       :comment-loading="model.state.detail.commentLoading"
       :show-actions="true"
-      :show-comment-composer="false"
+      :show-comment-composer="true"
       :start-loading="model.state.ui.startLoading"
       :complete-loading="model.state.ui.completeLoading"
       :cancel-loading="model.state.ui.cancelLoading"
+      :comment-draft="model.state.commentDraft"
+      :comment-submitting="model.state.ui.commentSubmitting"
       @close="model.handleCloseDetail"
       @refresh-comments="model.loadComments()"
       @edit="model.openEdit"
       @start="model.handleStart"
       @complete="model.handleComplete"
       @cancel="model.handleCancel"
+      @update:comment-draft="model.updateCommentDraft"
+      @submit-comment="model.submitComment()"
     />
 
     <DormTodoFormDialog

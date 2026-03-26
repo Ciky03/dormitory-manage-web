@@ -253,4 +253,70 @@ describe('createDormTodoPageModel', () => {
     expect(api.cancelDormTodo).not.toHaveBeenCalled()
     expect(showError).toHaveBeenCalledWith(null, '\u53d6\u6d88\u539f\u56e0\u4e0d\u80fd\u4e3a\u7a7a')
   })
+
+  it('submits a comment and refreshes only comments', async () => {
+    const api = {
+      fetchDormTodoStat: vi.fn().mockResolvedValue({
+        roomId: 'room-1',
+        buildingNum: '6A',
+        roomNum: '302',
+        totalCount: 1,
+        pendingCount: 0,
+        processingCount: 1,
+        weekCompletedCount: 0
+      }),
+      fetchDormTodoList: vi.fn().mockResolvedValue({
+        list: [{ id: 'todo-1', title: 'Weekend cleanup' }],
+        total: 1
+      }),
+      fetchDormTodoAssigneeOptions: vi.fn().mockResolvedValue([]),
+      fetchDormTodoDetail: vi.fn().mockResolvedValue({
+        id: 'todo-1',
+        title: 'Weekend cleanup',
+        content: 'Clean the shared area',
+        priorityLabel: 'High',
+        statusLabel: 'In Progress',
+        assigneeName: 'Li Ming',
+        creatorName: 'Wang Chen',
+        dueTime: '2026-03-27 21:00',
+        startTime: '',
+        completedTime: '',
+        completedByName: '',
+        cancelReason: '',
+        canEdit: false,
+        canStart: false,
+        canComplete: false,
+        canCancel: false,
+        commentList: []
+      }),
+      fetchDormTodoCommentList: vi.fn().mockResolvedValue([
+        {
+          id: 'comment-3',
+          todoId: 'todo-1',
+          commenterName: 'Li Ming',
+          content: 'Meet at 8 tonight',
+          createTime: '2026-03-26 20:00'
+        }
+      ]),
+      addDormTodoComment: vi.fn().mockResolvedValue({})
+    }
+
+    const model = createDormTodoPageModel({
+      api,
+      getCurrentUser: () => ({ id: 'stu-1' }),
+      showError: vi.fn()
+    })
+
+    await model.loadBootstrap()
+    await model.handleSelectTodo({ id: 'todo-1' })
+    await model.submitComment('Meet at 8 tonight')
+
+    expect(api.addDormTodoComment).toHaveBeenCalledWith({
+      todoId: 'todo-1',
+      content: 'Meet at 8 tonight'
+    })
+    expect(api.fetchDormTodoCommentList).toHaveBeenCalledWith('todo-1')
+    expect(api.fetchDormTodoList).toHaveBeenCalledTimes(1)
+    expect(api.fetchDormTodoStat).toHaveBeenCalledTimes(1)
+  })
 })

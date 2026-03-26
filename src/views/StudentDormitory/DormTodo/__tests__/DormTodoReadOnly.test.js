@@ -16,7 +16,9 @@ const testContext = vi.hoisted(() => ({
   loadList: vi.fn(),
   openCreate: vi.fn(),
   openEdit: vi.fn(),
+  submitComment: vi.fn(),
   submitForm: vi.fn(),
+  updateCommentDraft: vi.fn(),
   updateFilters: vi.fn(),
   updateForm: vi.fn(),
   state: {
@@ -93,6 +95,7 @@ const testContext = vi.hoisted(() => ({
       assigneeStudentId: '',
       dueTime: ''
     },
+    commentDraft: '',
     ui: {
       pageLoading: false,
       formVisible: false,
@@ -100,7 +103,8 @@ const testContext = vi.hoisted(() => ({
       submitLoading: false,
       startLoading: false,
       completeLoading: false,
-      cancelLoading: false
+      cancelLoading: false,
+      commentSubmitting: false
     }
   }
 }))
@@ -122,7 +126,9 @@ vi.mock('../useDormTodoPage', () => ({
     loadList: testContext.loadList,
     openCreate: testContext.openCreate,
     openEdit: testContext.openEdit,
+    submitComment: testContext.submitComment,
     submitForm: testContext.submitForm,
+    updateCommentDraft: testContext.updateCommentDraft,
     updateFilters: testContext.updateFilters,
     updateForm: testContext.updateForm
   })
@@ -133,7 +139,7 @@ describe('DormTodo page shell', () => {
     testContext.loadBootstrap.mockReset()
   })
 
-  it('renders the create entry while hiding permission-gated detail actions', async () => {
+  it('renders create and comment entry points while hiding permission-gated detail actions', async () => {
     const { default: DormTodoPage } = await import('../index.vue')
     const wrapper = mount(DormTodoPage, {
       global: {
@@ -157,8 +163,8 @@ describe('DormTodo page shell', () => {
     expect(pageText).toContain('\u65b0\u5efa\u5f85\u529e')
     expect(pageText).toContain('\u5468\u672b\u536b\u751f\u8f6e\u503c')
     expect(pageText).toContain('\u6682\u65e0\u8bc4\u8bba')
+    expect(pageText).toContain('\u53d1\u8868\u8bc4\u8bba')
     expect(pageText).not.toContain('\u5f00\u59cb\u5904\u7406')
     expect(pageText).not.toContain('\u8bf7\u8f93\u5165\u53d6\u6d88\u539f\u56e0')
-    expect(pageText).not.toContain('\u53d1\u8868\u8bc4\u8bba')
   })
 })

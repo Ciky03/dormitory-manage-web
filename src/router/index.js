@@ -13,6 +13,7 @@ import ConfigPersonPage from '../views/Config/Person/index.vue'
 import ConfigPersonFormPage from '../views/Config/Person/form.vue'
 import DormitoryConventionPage from '../views/StudentDormitory/Convention/index.vue'
 import DormTodoPage from '../views/StudentDormitory/DormTodo/index.vue'
+import DormitoryCostPage from '../views/StudentDormitory/DormitoryCost/index.vue'
 import NotFoundPage from '../views/NotFound/index.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
@@ -95,6 +96,12 @@ const routes = [
         name: 'StudentDormitoryTodo',
         component: DormTodoPage,
         meta: { title: '待办事务' }
+      },
+      {
+        path: 'student/dormitory-cost',
+        name: 'StudentDormitoryCost',
+        component: DormitoryCostPage,
+        meta: { title: '宿舍费用公摊' }
       }
     ]
   },

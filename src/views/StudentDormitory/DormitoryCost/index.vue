@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createDormitoryCostPageModel } from './useDormitoryCostPage'
 import DormitoryCostDetailDrawer from './components/DormitoryCostDetailDrawer.vue'
@@ -42,17 +42,17 @@ watch(isStudentUser, (isStudent) => {
 <template>
   <section class="dormitory-cost-page" v-loading="isStudentUser && model.state.ui.pageLoading">
     <el-card v-if="!isStudentUser" shadow="never">
-      <el-empty description="当前用户不是学生" />
+      <el-empty description="褰撳墠鐢ㄦ埛涓嶆槸瀛︾敓" />
     </el-card>
 
     <el-card v-else-if="model.state.ui.noRoomBinding" shadow="never">
-      <el-empty description="当前学生暂未绑定宿舍" />
+      <el-empty description="褰撳墠瀛︾敓鏆傛湭缁戝畾瀹胯垗" />
     </el-card>
 
     <el-card v-else-if="model.state.ui.bootstrapError" shadow="never">
       <el-result icon="error" :title="model.state.ui.bootstrapError" sub-title="请稍后重试">
         <template #extra>
-          <el-button type="primary" @click="model.loadBootstrap">重试</el-button>
+          <el-button type="primary" @click="model.loadBootstrap">閲嶈瘯</el-button>
         </template>
       </el-result>
     </el-card>
@@ -60,8 +60,8 @@ watch(isStudentUser, (isStudent) => {
     <template v-else>
       <DormitoryCostOverview
         :stat="model.state.stat.data"
-        :create-disabled="model.state.ui.memberSourceUnavailable"
-        create-disabled-text="宿舍成员数据暂不可用，暂时无法新建公摊单"
+        :create-disabled="false"
+        create-disabled-text="瀹胯垗鎴愬憳鏁版嵁鏆備笉鍙敤锛屾殏鏃舵棤娉曟柊寤哄叕鎽婂崟"
         @create="model.openCreate"
       />
 
@@ -139,3 +139,4 @@ watch(isStudentUser, (isStudent) => {
   overflow: hidden;
 }
 </style>
+

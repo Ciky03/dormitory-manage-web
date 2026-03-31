@@ -184,15 +184,15 @@ describe('DormitoryCost page shell', () => {
     setStudentUser()
   })
 
-  it('renders student room stats, the table, and a disabled create action', async () => {
+  it('renders student room stats, the table, and an enabled create action', async () => {
     const wrapper = await buildWrapper()
     await flushPromises()
 
     expect(testContext.loadBootstrap).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('1栋101')
+    expect(wrapper.text()).toContain('1栋-101')
     expect(wrapper.text()).toContain('3月聚餐费用')
     expect(wrapper.text()).toContain('待缴人数')
-    expect(wrapper.find('.overview-create-button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.overview-create-button').attributes('disabled')).toBeUndefined()
   })
 
   it('renders a non-student empty state without bootstrapping', async () => {

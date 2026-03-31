@@ -164,6 +164,21 @@ describe('createDormitoryCostPageModel read flows', () => {
     expect(showError).toHaveBeenCalledWith(null, '当前宿舍暂无可用于公摊的成员数据')
   })
 
+  it('keeps create closed and reports when room member loading rejects', async () => {
+    const showError = vi.fn()
+    const api = {
+      fetchDormitoryRoomMembers: vi.fn().mockRejectedValue(new Error('boom'))
+    }
+    const model = createDormitoryCostPageModel({ api, showError })
+
+    await model.openCreate()
+
+    expect(api.fetchDormitoryRoomMembers).toHaveBeenCalledTimes(1)
+    expect(model.state.ui.memberSourceUnavailable).toBe(true)
+    expect(model.state.ui.formVisible).toBe(false)
+    expect(showError).toHaveBeenCalledWith(null, '当前宿舍暂无可用于公摊的成员数据')
+  })
+
   it('clears stale detail state when bootstrap falls into no-room or error', async () => {
     const noRoomApi = {
       fetchDormitoryCostStat: vi.fn().mockResolvedValue({

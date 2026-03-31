@@ -50,6 +50,33 @@ describe('dormitoryCost api', () => {
     expect(request).toHaveBeenNthCalledWith(9, '/dormitory/cost/del/cost-1', { method: 'DELETE' })
   })
 
+  it('returns payload.data for stat and detail responses', async () => {
+    request.mockResolvedValueOnce({ code: '200', data: { total: 12, summary: 'ok' } })
+    request.mockResolvedValueOnce({ code: '200', data: { id: 'cost-1', title: '3月聚餐费用' } })
+
+    await expect(fetchDormitoryCostStat()).resolves.toEqual({ total: 12, summary: 'ok' })
+    await expect(fetchDormitoryCostDetail('cost-1')).resolves.toEqual({ id: 'cost-1', title: '3月聚餐费用' })
+  })
+
+  it('normalizes list responses and falls back to empty defaults', async () => {
+    request.mockResolvedValueOnce({ code: '200', data: { list: [{ id: 'cost-1' }], total: '7' } })
+    request.mockResolvedValueOnce({ code: '200', data: { list: null } })
+    request.mockResolvedValueOnce({ code: '200', data: {} })
+
+    await expect(fetchDormitoryCostList({ pageNum: 1, pageSize: 10 })).resolves.toEqual({
+      list: [{ id: 'cost-1' }],
+      total: 7
+    })
+    await expect(fetchDormitoryCostList({ pageNum: 2, pageSize: 10 })).resolves.toEqual({
+      list: [],
+      total: 0
+    })
+    await expect(fetchDormitoryCostList({ pageNum: 3, pageSize: 10 })).resolves.toEqual({
+      list: [],
+      total: 0
+    })
+  })
+
   it('uploads attachments as form-data with the business bucket', async () => {
     const file = new File(['voucher'], 'voucher.png', { type: 'image/png' })
     await uploadDormitoryCostAttach(file)

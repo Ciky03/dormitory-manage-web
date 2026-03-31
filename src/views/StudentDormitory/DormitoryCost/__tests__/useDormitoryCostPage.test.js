@@ -161,7 +161,10 @@ describe('createDormitoryCostPageModel read flows', () => {
     expect(api.fetchDormitoryRoomMembers).toHaveBeenCalledTimes(1)
     expect(model.state.ui.memberSourceUnavailable).toBe(true)
     expect(model.state.ui.formVisible).toBe(false)
-    expect(showError).toHaveBeenCalledWith(null, '当前宿舍暂无可用于公摊的成员数据')
+    expect(showError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'boom' }),
+      '当前宿舍暂无可用于公摊的成员数据'
+    )
   })
 
   it('keeps create closed and reports when room member loading rejects', async () => {

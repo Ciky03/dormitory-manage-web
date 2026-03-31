@@ -23,12 +23,15 @@ const props = defineProps({
 defineEmits(['close'])
 
 const dialogTitle = computed(() => (props.mode === 'edit' ? '编辑公摊单' : '新建公摊单'))
+const showCreatePlaceholderAlert = computed(
+  () => props.mode === 'create' && props.disabledCreate
+)
 </script>
 
 <template>
   <el-dialog :model-value="visible" :title="dialogTitle" width="560px" @close="$emit('close')">
     <el-alert
-      v-if="disabledCreate"
+      v-if="showCreatePlaceholderAlert"
       type="warning"
       :closable="false"
       title="宿舍成员数据暂不可用，本任务仅提供只读页面壳。"

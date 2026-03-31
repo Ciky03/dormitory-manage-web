@@ -65,5 +65,5 @@ export function uploadDormitoryCostAttach(file) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('bucket', 'dm-business-cost')
-  return request('/attach/upload', { method: 'POST', body: formData })
+  return request('/system/attach/upload', { method: 'POST', body: formData })
 }

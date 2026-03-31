@@ -94,6 +94,7 @@ watch(isStudentUser, (isStudent) => {
         :cancel-loading="model.state.ui.cancelLoading"
         :delete-loading="model.state.ui.deleteLoading"
         @close="model.handleCloseDetail"
+        @edit="model.openEdit"
         @publish="model.handlePublish"
         @pay="model.openPayDialog"
         @cancel="model.handleCancel"
@@ -104,8 +105,12 @@ watch(isStudentUser, (isStudent) => {
         :visible="model.state.ui.formVisible"
         :mode="model.state.ui.formMode"
         :form="model.state.form"
-        :disabled-create="model.state.ui.memberSourceUnavailable"
+        :loading="model.state.ui.submitLoading"
+        :uploading-source-voucher="model.state.ui.uploadingSourceVoucher"
         @close="model.closeForm"
+        @submit="model.submitForm"
+        @update:form="model.updateForm"
+        @source-voucher-change="model.handleSourceVoucherChange"
       />
 
       <DormitoryCostPayDialog
@@ -137,5 +142,9 @@ watch(isStudentUser, (isStudent) => {
   gap: 16px;
   min-height: 0;
   overflow: hidden;
+}
+
+.dormitory-cost-page :deep(.el-button) {
+  border-radius: var(--el-border-radius-base);
 }
 </style>

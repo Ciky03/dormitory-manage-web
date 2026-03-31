@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   visible: {
@@ -32,16 +32,73 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'publish', 'pay', 'cancel', 'delete-draft'])
+const emit = defineEmits(['close', 'edit', 'publish', 'pay', 'cancel', 'delete-draft'])
+const previewDialog = ref({
+  visible: false,
+  title: '费用凭证',
+  url: ''
+})
 
 const formatAmount = (value) => {
   const amount = Number(value)
-  return Number.isFinite(amount) ? `CNY ${amount.toFixed(2)}` : '-'
+  return Number.isFinite(amount) ? `${amount.toFixed(2)} 元` : '-'
+}
+
+const resolveStatusTagType = (label, status) => {
+  const text = String(label || '')
+  if (/完成/.test(text) || Number(status) === 2) return 'success'
+  if (/取消/.test(text) || Number(status) === 3) return 'info'
+  if (/草稿/.test(text) || Number(status) === 0) return 'warning'
+  return 'primary'
+}
+
+const getPayStatusClass = (payStatus) => {
+  switch (Number(payStatus)) {
+    case 1:
+      return 'pay-status-text pay-status-paid'
+    case 0:
+      return 'pay-status-text pay-status-unpaid'
+    default:
+      return 'pay-status-text'
+  }
 }
 
 const displayText = (value, fallback = '-') => {
   if (value === undefined || value === null || value === '') return fallback
   return value
+}
+
+const isImageUrl = (value) => {
+  const url = String(value || '').toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].some((ext) => url.includes(ext))
+}
+
+const openPreviewDialog = (url, title = '费用凭证') => {
+  if (!url) return
+  if (isImageUrl(url)) {
+    previewDialog.value = {
+      visible: true,
+      title,
+      url
+    }
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const handlePreviewSourceVoucher = () => {
+  openPreviewDialog(props.detail?.sourceVoucherUrl, '费用凭证')
+}
+
+const hasMemberVoucher = (member) => Boolean(member?.sourceVoucherAttachId || member?.voucherAttachId)
+
+const getMemberVoucherName = (member) =>
+  displayText(member?.sourceVoucherName || member?.voucherName, '查看凭证')
+
+const getMemberVoucherUrl = (member) => member?.sourceVoucherUrl || member?.voucherUrl || ''
+
+const handlePreviewMemberVoucher = (member) => {
+  openPreviewDialog(getMemberVoucherUrl(member), getMemberVoucherName(member))
 }
 
 const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? props.detail.memberList : []))
@@ -51,7 +108,8 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
   <el-drawer
     :model-value="visible"
     title="公摊详情"
-    size="420px"
+    class="cost-detail-drawer"
+    size="560px"
     destroy-on-close
     @close="emit('close')"
   >
@@ -65,7 +123,26 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
           <el-descriptions-item label="发起人">{{ displayText(detail.initiatorName) }}</el-descriptions-item>
           <el-descriptions-item label="发生日期">{{ displayText(detail.occurredDate) }}</el-descriptions-item>
           <el-descriptions-item label="截止时间">{{ displayText(detail.dueTime) }}</el-descriptions-item>
-          <el-descriptions-item label="状态">{{ displayText(detail.statusLabel) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag
+              size="small"
+              effect="plain"
+              :type="resolveStatusTagType(detail.statusLabel, detail.status)"
+            >
+              {{ displayText(detail.statusLabel) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="费用凭证">
+            <el-link
+              v-if="detail.sourceVoucherUrl"
+              type="primary"
+              :underline="false"
+              @click="handlePreviewSourceVoucher"
+            >
+              {{ displayText(detail.sourceVoucherName, '查看费用凭证') }}
+            </el-link>
+            <span v-else>{{ displayText(detail.sourceVoucherName) }}</span>
+          </el-descriptions-item>
           <el-descriptions-item label="备注">{{ displayText(detail.remark) }}</el-descriptions-item>
         </el-descriptions>
 
@@ -83,7 +160,16 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
                   {{ displayText(member.studentName) }}
                   <el-tag v-if="member.isCurrentUser" size="small" type="primary">我</el-tag>
                 </div>
-                <div class="member-status">{{ displayText(member.payStatusLabel) }}</div>
+                <div :class="getPayStatusClass(member.payStatus)">{{ displayText(member.payStatusLabel) }}</div>
+                <el-link
+                  v-if="hasMemberVoucher(member)"
+                  class="member-voucher-link"
+                  type="primary"
+                  :underline="false"
+                  @click="handlePreviewMemberVoucher(member)"
+                >
+                  {{ getMemberVoucherName(member) }}
+                </el-link>
               </div>
               <strong>{{ formatAmount(member.amountDue) }}</strong>
             </div>
@@ -92,8 +178,17 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
 
         <div class="detail-actions">
           <el-button
+            v-if="detail.canEdit"
+            class="detail-action-button"
+            @click="emit('edit')"
+          >
+            编辑
+          </el-button>
+          <el-button
             v-if="detail.canPublish"
             class="detail-action-button"
+            type="primary"
+            plain
             :loading="publishLoading"
             @click="emit('publish')"
           >
@@ -130,6 +225,21 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
       </template>
     </div>
   </el-drawer>
+
+  <el-dialog
+    v-model="previewDialog.visible"
+    :title="previewDialog.title"
+    width="720px"
+    append-to-body
+    destroy-on-close
+  >
+    <img
+      v-if="previewDialog.url"
+      :src="previewDialog.url"
+      :alt="previewDialog.title"
+      class="source-voucher-preview-image"
+    />
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -166,10 +276,22 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
   font-weight: 600;
 }
 
-.member-status {
+.pay-status-text {
   margin-top: 4px;
-  color: #64748b;
   font-size: 12px;
+  font-weight: 600;
+}
+
+.pay-status-unpaid {
+  color: #d03050;
+}
+
+.pay-status-paid {
+  color: #237b4b;
+}
+
+.member-voucher-link {
+  margin-top: 6px;
 }
 
 .detail-actions {
@@ -185,5 +307,16 @@ const memberList = computed(() => (Array.isArray(props.detail?.memberList) ? pro
 
 .detail-action-button {
   min-width: 112px;
+}
+
+.cost-detail-drawer :deep(.el-button) {
+  border-radius: var(--el-border-radius-base);
+}
+
+.source-voucher-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
 }
 </style>

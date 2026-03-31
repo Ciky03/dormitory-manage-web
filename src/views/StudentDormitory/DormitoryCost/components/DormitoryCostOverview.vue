@@ -19,10 +19,15 @@ const props = defineProps({
 const emit = defineEmits(['create'])
 
 const roomLabel = computed(() => `${props.stat?.buildingNum || '-'}-${props.stat?.roomNum || '-'}`)
+const formatAmount = (value) => {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? `￥${amount.toFixed(2)}` : '￥0.00'
+}
+
 const cards = computed(() => [
-  { label: '全部公摊单', value: props.stat?.totalCount ?? 0 },
-  { label: '待缴人数', value: props.stat?.unpaidCount ?? 0 },
-  { label: '本月已完成公摊单', value: props.stat?.monthCompletedCount ?? 0 }
+  { label: '我的未缴总额', value: formatAmount(props.stat?.myUnpaidAmount) },
+  { label: '本月宿舍未缴总额', value: formatAmount(props.stat?.currentMonthRoomUnpaidAmount) },
+  { label: '宿舍未缴总额', value: formatAmount(props.stat?.roomUnpaidAmount) }
 ])
 </script>
 
@@ -32,11 +37,9 @@ const cards = computed(() => [
       <div class="overview-header">
         <div class="overview-copy">
           <h2 class="room-label">{{ roomLabel }}</h2>
-          <p class="overview-tip">查看宿舍费用公摊概览与个人待缴情况。</p>
         </div>
         <div class="overview-actions">
           <el-button
-            class="overview-create-button"
             type="primary"
             :disabled="createDisabled"
             :title="createDisabled ? createDisabledText : '新建公摊单'"
@@ -88,20 +91,10 @@ const cards = computed(() => [
   line-height: 1.2;
 }
 
-.overview-tip {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
 .overview-actions {
   display: grid;
   justify-items: end;
   gap: 8px;
-}
-
-.overview-create-button {
-  border-radius: var(--el-border-radius-base);
 }
 
 .create-disabled-text {

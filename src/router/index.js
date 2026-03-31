@@ -98,10 +98,10 @@ const routes = [
         meta: { title: '待办事务' }
       },
       {
-        path: 'student/dormitory-cost',
+        path: 'student/dormitory/cost',
         name: 'StudentDormitoryCost',
         component: DormitoryCostPage,
-        meta: { title: '宿舍费用公摊' }
+        meta: { title: '费用公摊' }
       }
     ]
   },

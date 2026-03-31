@@ -1,4 +1,5 @@
 <script setup>
+import searchIcon from '../../../../assets/button/search.svg'
 import PaginationBar from '../../../../components/list/PaginationBar.vue'
 
 const props = defineProps({
@@ -6,10 +7,12 @@ const props = defineProps({
   total: { type: Number, default: 0 },
   currentPage: { type: Number, default: 1 },
   pageSize: { type: Number, default: 10 },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  filtersVisible: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['select', 'update:currentPage', 'update:pageSize'])
+const emit = defineEmits(['select', 'toggle-filters', 'update:currentPage', 'update:pageSize'])
+const SUMMARY_LIMIT = 40
 
 const resolveTagType = (value) => {
   if (/高/.test(String(value || ''))) return 'danger'
@@ -19,13 +22,31 @@ const resolveTagType = (value) => {
   if (/取消/.test(String(value || ''))) return 'info'
   return 'primary'
 }
+
+const formatSummary = (value) => {
+  const text = String(value || '-')
+  if (text.length >= SUMMARY_LIMIT) {
+    return `${text.slice(0, SUMMARY_LIMIT)}...`
+  }
+  return text
+}
 </script>
 
 <template>
   <el-card class="todo-card-list" shadow="never">
     <template #header>
       <div class="list-header">
-        <span>宿舍待办列表</span>
+        <div class="list-title-group">
+          <span>宿舍待办列表</span>
+          <button
+            type="button"
+            class="search-toggle"
+            :class="{ 'is-active': filtersVisible }"
+            @click="emit('toggle-filters')"
+          >
+            <img :src="searchIcon" alt="筛选开关" />
+          </button>
+        </div>
         <span class="list-total">共 {{ total }} 条</span>
       </div>
     </template>
@@ -41,13 +62,15 @@ const resolveTagType = (value) => {
         >
           <div class="card-top">
             <div>
-              <h3 class="card-title">{{ item.title || '-' }}</h3>
-              <p class="card-summary">{{ item.summary || '-' }}</p>
-            </div>
-            <div class="card-tags">
-              <el-tag size="small" :type="resolveTagType(item.priorityLabel)">{{ item.priorityLabel || '-' }}</el-tag>
-              <el-tag size="small" effect="plain" :type="resolveTagType(item.statusLabel)">{{ item.statusLabel || '-' }}</el-tag>
-              <el-tag v-if="item.overdue" size="small" type="danger" effect="plain">已逾期</el-tag>
+              <div class="card-headline">
+                <div class="card-tags">
+                  <el-tag size="small" :type="resolveTagType(item.priorityLabel)">{{ item.priorityLabel || '-' }}</el-tag>
+                  <el-tag size="small" effect="plain" :type="resolveTagType(item.statusLabel)">{{ item.statusLabel || '-' }}</el-tag>
+                  <el-tag v-if="item.overdue" size="small" type="danger" effect="plain">已逾期</el-tag>
+                </div>
+                <h3 class="card-title">{{ item.title || '-' }}</h3>
+              </div>
+              <p class="card-summary">{{ formatSummary(item.summary) }}</p>
             </div>
           </div>
 
@@ -83,8 +106,20 @@ const resolveTagType = (value) => {
 
 <style scoped>
 .todo-card-list {
+  display: flex;
+  flex-direction: column;
   border: 1px solid #dde6f2;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
+}
+
+.todo-card-list :deep(.el-card__body) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .list-header {
@@ -94,13 +129,54 @@ const resolveTagType = (value) => {
   gap: 12px;
 }
 
+.list-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .list-total {
   color: #64748b;
   font-size: 13px;
 }
 
+.search-toggle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #d8e2f0;
+  border-radius: var(--el-border-radius-base);
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-toggle:hover {
+  border-color: #b8c9e6;
+  background: #f8fbff;
+}
+
+.search-toggle.is-active {
+  border-color: #2338a6;
+  background: #eef2ff;
+  box-shadow: 0 8px 18px rgba(35, 56, 166, 0.12);
+}
+
+.search-toggle img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 .list-body {
+  flex: 1 1 auto;
   min-height: 240px;
+  overflow: auto;
+  padding: 2px 4px 0 0;
+  box-sizing: border-box;
 }
 
 .todo-cards {
@@ -124,26 +200,34 @@ const resolveTagType = (value) => {
 }
 
 .card-top {
+  display: block;
+}
+
+.card-headline {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .card-title {
   margin: 0;
   color: #122033;
   font-size: 18px;
+  line-height: 1.3;
 }
 
 .card-summary {
   margin: 8px 0 0;
   color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-tags {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -172,20 +256,13 @@ const resolveTagType = (value) => {
 }
 
 .list-pagination {
+  flex: 0 0 auto;
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
 
 @media (max-width: 900px) {
-  .card-top {
-    flex-direction: column;
-  }
-
-  .card-tags {
-    justify-content: flex-start;
-  }
-
   .card-meta {
     grid-template-columns: 1fr;
   }

@@ -102,6 +102,10 @@ const updateField = (key, value) => {
   gap: 8px;
 }
 
+.dialog-footer :deep(.el-button) {
+  border-radius: var(--el-border-radius-base);
+}
+
 @media (max-width: 720px) {
   .form-grid {
     grid-template-columns: 1fr;

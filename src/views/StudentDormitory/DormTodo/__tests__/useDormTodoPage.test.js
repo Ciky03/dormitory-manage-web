@@ -55,7 +55,7 @@ describe('createDormTodoPageModel', () => {
     ])
   })
 
-  it('maps onlyMine to the current student id', async () => {
+  it('maps onlyMine to the current business user id', async () => {
     const api = {
       fetchDormTodoStat: vi.fn().mockResolvedValue({
         roomId: 'room-1',
@@ -70,7 +70,7 @@ describe('createDormTodoPageModel', () => {
       fetchDormTodoAssigneeOptions: vi.fn().mockResolvedValue([])
     }
 
-    const model = createDormTodoPageModel({ api, getCurrentUser: () => ({ studentId: 'stu-9' }) })
+    const model = createDormTodoPageModel({ api, getCurrentUser: () => ({ businessUserId: 'stu-9' }) })
     model.state.filters.onlyMine = true
     await model.loadList()
 

@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { onBeforeRouteLeave } from 'vue-router'
 import { MdEditor, MdPreview } from 'md-editor-v3'
@@ -41,6 +41,7 @@ const pageStatus = ref(PAGE_STATUS.INIT)
 const errorMessage = ref('')
 const noRoomBinding = ref(false)
 const publishDialogVisible = ref(false)
+const currentUser = ref(getCurrentUser())
 
 const roomInfo = ref({ roomId: '', roomName: '', roomNo: '' })
 const currentConvention = ref(null)
@@ -64,6 +65,7 @@ const draftSnapshot = ref('')
 const draftEditorMode = ref(DRAFT_EDITOR_MODE.CREATE)
 
 const isEditable = computed(() => pageStatus.value === PAGE_STATUS.EDIT_DRAFT)
+const isStudentUser = computed(() => String(currentUser.value?.userType ?? '') === '1')
 const hasData = computed(() => Boolean(currentConvention.value || draftConvention.value))
 const activeConvention = computed(() => viewingVersion.value || currentConvention.value)
 const headerConvention = computed(() => {
@@ -192,6 +194,19 @@ const normalizeConvention = (payload) => {
 const normalizeConventionList = (payload) =>
   normalizeList(payload).map((item) => normalizeConvention(item)).filter(Boolean)
 
+const resolveProfileRoomId = (payload) => {
+  const source = normalizeData(payload) || {}
+  const sourceRoom = source.room || source.dormitory || {}
+  return String(
+    source.roomId ??
+      source.room_id ??
+      source.dormitoryId ??
+      source.dormitory_id ??
+      sourceRoom.id ??
+      ''
+  ).trim()
+}
+
 const normalizeRoomInfo = (payload) => {
   const source = normalizeData(payload) || {}
   const user = getCurrentUser() || {}
@@ -262,9 +277,6 @@ const normalizeMemberAckList = (payload) =>
     readTime: item?.readTime ?? item?.read_at ?? '',
     agreeTime: item?.agreeTime ?? item?.agree_at ?? ''
   }))
-
-const hasBoundRoom = (room) =>
-  Boolean(String(room?.roomId || '').trim() || String(room?.roomNo || '').trim() || String(room?.roomName || '').trim())
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -412,7 +424,32 @@ const handleLoadError = (error) => {
   showError(error, '页面数据加载失败')
 }
 
+const syncCurrentUser = () => {
+  currentUser.value = getCurrentUser()
+}
+
+const resetPageState = () => {
+  pageStatus.value = PAGE_STATUS.INIT
+  errorMessage.value = ''
+  noRoomBinding.value = false
+  publishDialogVisible.value = false
+  historyDrawerVisible.value = false
+  roomInfo.value = { roomId: '', roomName: '', roomNo: '' }
+  currentConvention.value = null
+  draftConvention.value = null
+  editingConvention.value = null
+  viewingVersion.value = null
+  historyVersions.value = []
+  memberAckRows.value = []
+  resetAckState()
+  resetDraftForm()
+}
+
 const loadPageData = async () => {
+  if (!isStudentUser.value) {
+    resetPageState()
+    return
+  }
   pageStatus.value = PAGE_STATUS.LOADING
   errorMessage.value = ''
   noRoomBinding.value = false
@@ -423,16 +460,16 @@ const loadPageData = async () => {
       error?.status === 404 ? null : Promise.reject(error)
     )
     await refreshMainData(payload)
+    noRoomBinding.value = !resolveProfileRoomId(payload)
     await loadAckStateForDisplay()
-    noRoomBinding.value = !hasBoundRoom(roomInfo.value) && !hasData.value
-    pageStatus.value = hasData.value ? PAGE_STATUS.VIEW : PAGE_STATUS.EMPTY
+    pageStatus.value = noRoomBinding.value ? PAGE_STATUS.EMPTY : hasData.value ? PAGE_STATUS.VIEW : PAGE_STATUS.EMPTY
   } catch (error) {
     handleLoadError(error)
   }
 }
 
 const handleCreateDraft = () => {
-  if (noRoomBinding.value) return showError(null, '当前未分配宿舍，无法创建草稿')
+  if (noRoomBinding.value) return showError(null, '当前学生暂未分配宿舍，无法创建草稿')
   openDraftEditor({ title: '', content: '', status: 0, mode: DRAFT_EDITOR_MODE.CREATE })
 }
 
@@ -654,17 +691,33 @@ onBeforeRouteLeave(async () => {
 
 onMounted(() => {
   if (typeof window !== 'undefined') window.addEventListener('beforeunload', handleBeforeUnload)
-  loadPageData()
+  if (typeof window !== 'undefined') window.addEventListener('user-updated', syncCurrentUser)
+  if (isStudentUser.value) {
+    loadPageData()
+  }
 })
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (typeof window !== 'undefined') window.removeEventListener('user-updated', syncCurrentUser)
+})
+
+watch(isStudentUser, (isStudent) => {
+  if (isStudent) {
+    loadPageData()
+    return
+  }
+  resetPageState()
 })
 </script>
 
 <template>
   <section class="convention-page" v-loading="pageStatus === PAGE_STATUS.LOADING">
-    <el-card v-if="pageStatus === PAGE_STATUS.ERROR" shadow="never">
+    <el-card v-if="!isStudentUser" shadow="never">
+      <el-empty description="当前用户不是学生" />
+    </el-card>
+
+    <el-card v-else-if="pageStatus === PAGE_STATUS.ERROR" shadow="never">
       <el-result icon="error" :title="errorMessage || '接口请求失败'" sub-title="请重试或稍后再试">
         <template #extra>
           <el-button type="primary" @click="loadPageData">重试</el-button>
@@ -673,7 +726,7 @@ onBeforeUnmount(() => {
     </el-card>
 
     <el-card v-else-if="noRoomBinding" shadow="never">
-      <el-empty description="当前未分配宿舍，无法查看公约" />
+      <el-empty description="当前学生暂未分配宿舍" />
     </el-card>
 
     <div v-else class="layout-wrap" :class="{ 'left-collapsed': leftCollapsed }">
@@ -719,7 +772,7 @@ onBeforeUnmount(() => {
 
               <div class="left-actions">
                 <el-button
-                  v-if="Number(activeConvention?.status) !== 1"
+                  v-if="hasData && Number(activeConvention?.status) !== 1"
                   type="primary"
                   :disabled="publishDisabled"
                   :loading="publishing"
@@ -893,6 +946,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.convention-page :deep(.el-button) {
+  border-radius: var(--el-border-radius-base);
+}
+
 .convention-page {
   height: 100%;
   min-height: 0;
@@ -979,7 +1036,7 @@ onBeforeUnmount(() => {
   height: 48px;
   padding: 0;
   border: 1px solid #d6deeb;
-  border-radius: 12px;
+  border-radius: var(--el-border-radius-base);
   background: #ffffff;
   color: #6b7280;
 }

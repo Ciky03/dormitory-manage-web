@@ -91,10 +91,10 @@ const routes = [
         meta: { title: '宿舍公约' }
       },
       {
-        path: 'student/dorm-todo',
-        name: 'StudentDormTodo',
+        path: 'student/dormitory/todo',
+        name: 'StudentDormitoryTodo',
         component: DormTodoPage,
-        meta: { title: '宿舍待办事务' }
+        meta: { title: '待办事务' }
       }
     ]
   },

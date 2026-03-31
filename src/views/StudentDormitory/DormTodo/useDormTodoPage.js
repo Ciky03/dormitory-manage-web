@@ -56,6 +56,8 @@ const createInitialState = () => ({
   commentDraft: '',
   ui: {
     pageLoading: false,
+    bootstrapError: '',
+    noRoomBinding: false,
     formVisible: false,
     formMode: 'create',
     submitLoading: false,
@@ -66,7 +68,8 @@ const createInitialState = () => ({
   }
 })
 
-const resolveCurrentStudentId = (user) => String(user?.studentId ?? user?.id ?? '')
+const resolveCurrentStudentId = (user) =>
+  String(user?.businessUserId ?? user?.studentId ?? user?.id ?? '')
 
 export function createDormTodoPageModel(deps = {}) {
   const api = deps.api ?? dormTodoApi
@@ -102,13 +105,20 @@ export function createDormTodoPageModel(deps = {}) {
     state.ui.formVisible = false
   }
 
-  const loadStat = async () => {
+  const loadStat = async (options = {}) => {
+    const { throwOnError = false, silent = false } = options
     state.stat.loading = true
     try {
       state.stat.data = await api.fetchDormTodoStat()
+      return state.stat.data
     } catch (error) {
-      onError(error, '加载待办统计失败')
       state.stat.data = createInitialState().stat.data
+      if (!silent) {
+        onError(error, '加载待办统计失败')
+      }
+      if (throwOnError) {
+        throw error
+      }
     } finally {
       state.stat.loading = false
     }
@@ -325,8 +335,23 @@ export function createDormTodoPageModel(deps = {}) {
 
   const loadBootstrap = async () => {
     state.ui.pageLoading = true
-    await Promise.all([loadStat(), loadList(), loadAssigneeOptions()])
-    state.ui.pageLoading = false
+    state.ui.bootstrapError = ''
+    state.ui.noRoomBinding = false
+    try {
+      const stat = await loadStat({ throwOnError: true, silent: true })
+      if (!String(stat?.roomId || '').trim()) {
+        state.ui.noRoomBinding = true
+        state.list.items = []
+        state.list.total = 0
+        state.assigneeOptions.data = [{ label: '全部', value: '' }]
+        return
+      }
+      await Promise.all([loadList(), loadAssigneeOptions()])
+    } catch (error) {
+      state.ui.bootstrapError = String(error?.message || '加载待办统计失败')
+    } finally {
+      state.ui.pageLoading = false
+    }
   }
 
   return {

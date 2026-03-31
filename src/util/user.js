@@ -1,8 +1,22 @@
 const USER_STORAGE_KEY = import.meta.env.VITE_USER_STORAGE_KEY ?? 'current_user'
 
 const normalizeUser = (payload) => {
-  if (payload?.data && typeof payload.data === 'object') return payload.data
-  if (payload && typeof payload === 'object') return payload
+  const source =
+    payload?.data && typeof payload.data === 'object'
+      ? payload.data
+      : payload && typeof payload === 'object'
+        ? payload
+        : null
+  if (source) {
+    return {
+      ...source,
+      userType: source.userType ?? null,
+      businessUserId: source.businessUserId ?? '',
+      studentId:
+        source.studentId ??
+        (String(source.userType) === '1' ? source.businessUserId ?? '' : undefined)
+    }
+  }
   return {}
 }
 

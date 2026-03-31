@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   stat: { type: Object, required: true },
@@ -7,6 +8,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create'])
+const collapsed = ref(false)
 
 const roomLabel = computed(() => `${props.stat?.buildingNum || '-'}-${props.stat?.roomNum || '-'}`)
 const cards = computed(() => [
@@ -15,19 +17,42 @@ const cards = computed(() => [
   { label: '进行中', value: props.stat?.processingCount ?? 0 },
   { label: '本周已完成', value: props.stat?.weekCompletedCount ?? 0 }
 ])
+
+const toggleCollapsed = () => {
+  collapsed.value = !collapsed.value
+}
 </script>
 
 <template>
   <section class="todo-overview">
-    <el-card class="overview-hero" shadow="never">
+    <el-card class="overview-hero" :class="{ 'is-collapsed': collapsed }" shadow="never">
       <div class="hero-header">
         <div>
-          <p class="hero-caption">当前宿舍</p>
           <h2 class="hero-room">{{ roomLabel }}</h2>
         </div>
-        <el-button v-if="showCreate" type="primary" @click="emit('create')">新建待办</el-button>
+        <div class="hero-actions">
+          <el-button
+            v-if="showCreate"
+            class="hero-create-button"
+            type="primary"
+            @click="emit('create')"
+          >
+            新建待办
+          </el-button>
+          <button
+            type="button"
+            class="hero-collapse-toggle"
+            :aria-label="collapsed ? '展开概览' : '收起概览'"
+            @click="toggleCollapsed"
+          >
+            <el-icon>
+              <ArrowDown v-if="collapsed" />
+              <ArrowUp v-else />
+            </el-icon>
+          </button>
+        </div>
       </div>
-      <div class="hero-stats">
+      <div v-show="!collapsed" class="hero-stats">
         <article v-for="card in cards" :key="card.label" class="stat-card">
           <span class="stat-label">{{ card.label }}</span>
           <strong class="stat-value">{{ card.value }}</strong>
@@ -47,34 +72,68 @@ const cards = computed(() => [
   background: linear-gradient(135deg, #ffffff 0%, #f6f9ff 100%);
 }
 
+.overview-hero :deep(.el-card__body) {
+  padding: 14px 18px 14px;
+}
+
 .hero-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-.hero-caption {
-  margin: 0 0 6px;
-  color: #64748b;
-  font-size: 13px;
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .hero-room {
   margin: 0;
   color: #122033;
-  font-size: 28px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.hero-create-button {
+  border-radius: var(--el-border-radius-base);
+}
+
+.hero-collapse-toggle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #d8e2f0;
+  border-radius: var(--el-border-radius-base);
+  background: #ffffff;
+  color: #42526b;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.hero-collapse-toggle:hover {
+  border-color: #b8c9e6;
+  background: #f8fbff;
+  color: #2338a6;
+}
+
+.overview-hero.is-collapsed {
+  padding-bottom: 0;
 }
 
 .hero-stats {
-  margin-top: 18px;
+  margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .stat-card {
-  padding: 16px;
+  padding: 12px 16px;
   border-radius: 12px;
   background: #f8fbff;
   border: 1px solid #e3ebf6;
@@ -88,9 +147,9 @@ const cards = computed(() => [
 
 .stat-value {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: #122033;
-  font-size: 24px;
+  font-size: 20px;
 }
 
 @media (max-width: 960px) {
@@ -103,6 +162,11 @@ const cards = computed(() => [
   .hero-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .hero-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .hero-stats {

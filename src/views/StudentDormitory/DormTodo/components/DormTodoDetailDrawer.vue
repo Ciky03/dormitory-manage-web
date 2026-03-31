@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import DormTodoCommentTimeline from './DormTodoCommentTimeline.vue'
 
 const props = defineProps({
@@ -27,24 +27,36 @@ const emit = defineEmits([
   'update:commentDraft',
   'submit-comment'
 ])
-const cancelReason = ref('')
-
-watch(
-  () => [props.visible, props.todo?.id],
-  () => {
-    cancelReason.value = ''
-  },
-  { immediate: true }
-)
 
 const displayText = (value, fallback = '-') => {
   if (value === undefined || value === null || value === '') return fallback
   return value
 }
+
+const handleCancelClick = async () => {
+  try {
+    const { value } = await ElMessageBox.prompt('', '取消任务', {
+      customClass: 'todo-cancel-prompt',
+      confirmButtonText: '确认',
+      cancelButtonText: '关闭',
+      inputPlaceholder: '请输入取消原因',
+      inputValidator: (inputValue) => {
+        if (!String(inputValue || '').trim()) {
+          return '取消原因不能为空'
+        }
+        return true
+      }
+    })
+    emit('cancel', String(value || '').trim())
+  } catch (error) {
+    // User cancelled the prompt.
+  }
+}
 </script>
 
 <template>
   <el-drawer
+    class="todo-detail-drawer"
     :model-value="visible"
     title="待办详情"
     direction="rtl"
@@ -100,13 +112,37 @@ const displayText = (value, fallback = '-') => {
         </el-card>
 
         <div v-if="showActions" class="detail-actions">
-          <el-button v-if="todo.canEdit" @click="emit('edit')">编辑</el-button>
-          <el-button v-if="todo.canStart" type="primary" :loading="startLoading" @click="emit('start')">开始处理</el-button>
-          <el-button v-if="todo.canComplete" type="success" :loading="completeLoading" @click="emit('complete')">完成</el-button>
-          <div v-if="todo.canCancel" class="cancel-box">
-            <el-input v-model="cancelReason" placeholder="请输入取消原因" clearable />
-            <el-button type="danger" :loading="cancelLoading" @click="emit('cancel', cancelReason)">取消</el-button>
-          </div>
+          <el-button
+            v-if="todo.canEdit"
+            class="action-button action-button-edit"
+            @click="emit('edit')"
+          >
+            编辑
+          </el-button>
+          <el-button
+            v-if="todo.canStart"
+            class="action-button action-button-start"
+            :loading="startLoading"
+            @click="emit('start')"
+          >
+            开始处理
+          </el-button>
+          <el-button
+            v-if="todo.canComplete"
+            class="action-button action-button-complete"
+            :loading="completeLoading"
+            @click="emit('complete')"
+          >
+            完成
+          </el-button>
+          <el-button
+            v-if="todo.canCancel"
+            class="action-button action-button-cancel"
+            :loading="cancelLoading"
+            @click="handleCancelClick"
+          >
+            取消
+          </el-button>
         </div>
 
         <el-card class="detail-card" shadow="never">
@@ -136,10 +172,37 @@ const displayText = (value, fallback = '-') => {
   </el-drawer>
 </template>
 
+<style>
+.todo-detail-drawer .el-drawer__header {
+  align-items: center;
+  min-height: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 12px 18px 6px !important;
+}
+
+.todo-detail-drawer .el-drawer__title {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.todo-detail-drawer .el-drawer__body {
+  padding: 10px 18px 10px !important;
+}
+
+.todo-cancel-prompt .el-message-box__message {
+  display: none;
+}
+
+.todo-cancel-prompt .el-message-box__btns .el-button {
+  border-radius: var(--el-border-radius-base);
+}
+</style>
+
 <style scoped>
+
 .drawer-body {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .drawer-heading {
@@ -155,7 +218,7 @@ const displayText = (value, fallback = '-') => {
 }
 
 .todo-tags {
-  margin-top: 10px;
+  margin-top: 4px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -201,13 +264,72 @@ const displayText = (value, fallback = '-') => {
 }
 
 .detail-actions {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
-.cancel-box {
-  display: grid;
-  gap: 8px;
+.detail-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.action-button {
+  min-width: 88px;
+  padding: 8px 14px;
+  border-radius: var(--el-border-radius-base);
+}
+
+.action-button-edit {
+  border-color: #d8e2f0;
+  background: #ffffff;
+  color: #31435e;
+}
+
+.action-button-edit:hover,
+.action-button-edit:focus {
+  border-color: #b9c8dd;
+  background: #f7faff;
+  color: #22324b;
+}
+
+.action-button-start {
+  border-color: #c7d3ee;
+  background: #edf3ff;
+  color: #294b8f;
+}
+
+.action-button-start:hover,
+.action-button-start:focus {
+  border-color: #b1c3ea;
+  background: #e4edff;
+  color: #203d77;
+}
+
+.action-button-complete {
+  border-color: #c6dbc9;
+  background: #eef8ef;
+  color: #2f6b44;
+}
+
+.action-button-complete:hover,
+.action-button-complete:focus {
+  border-color: #b0cfb4;
+  background: #e4f3e6;
+  color: #27593a;
+}
+
+.action-button-cancel {
+  border-color: #e2c9c4;
+  background: #fcf2f0;
+  color: #8b4a42;
+}
+
+.action-button-cancel:hover,
+.action-button-cancel:focus {
+  border-color: #d9b6af;
+  background: #f9e7e3;
+  color: #743c35;
 }
 
 .comment-header {

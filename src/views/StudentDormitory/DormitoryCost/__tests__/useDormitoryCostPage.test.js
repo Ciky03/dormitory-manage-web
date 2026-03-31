@@ -205,4 +205,118 @@ describe('createDormitoryCostPageModel read flows', () => {
       pageSize: 10
     })
   })
+
+  it('publishes, pays, cancels, and deletes with the expected api chain and refreshes stat list detail', async () => {
+    const api = {
+      fetchDormitoryCostStat: vi.fn().mockResolvedValue({
+        roomId: 'room-1',
+        buildingNum: '1栋',
+        roomNum: '101',
+        totalCount: 1,
+        unpaidCount: 1,
+        monthCompletedCount: 0
+      }),
+      fetchDormitoryCostList: vi.fn().mockResolvedValue({
+        list: [{ id: 'cost-1', title: '3月聚餐费用' }],
+        total: 1
+      }),
+      fetchDormitoryCostDetail: vi.fn().mockResolvedValue({
+        id: 'cost-1',
+        title: '3月聚餐费用',
+        status: 0,
+        statusLabel: '草稿',
+        canPublish: true,
+        canPay: true,
+        canCancel: true,
+        memberList: [
+          {
+            detailId: 'detail-1',
+            studentId: 'stu-1',
+            studentName: '张三',
+            amountDue: 42,
+            isCurrentUser: true
+          }
+        ]
+      }),
+      publishDormitoryCost: vi.fn().mockResolvedValue({}),
+      uploadDormitoryCostAttach: vi.fn().mockResolvedValue({ data: { id: 'att-pay', url: 'https://example.com/pay.png' } }),
+      payDormitoryCost: vi.fn().mockResolvedValue({}),
+      cancelDormitoryCost: vi.fn().mockResolvedValue({}),
+      deleteDormitoryCost: vi.fn().mockResolvedValue({})
+    }
+    const model = createDormitoryCostPageModel({ api, showError: vi.fn() })
+
+    await model.loadBootstrap()
+    await model.handleSelectCost({ id: 'cost-1' })
+    await model.handlePublish()
+    model.openPayDialog()
+    await model.handlePayVoucherChange(new File(['voucher'], 'voucher.png', { type: 'image/png' }))
+    await model.submitPay()
+    await model.handleCancel()
+    await model.handleDeleteDraft()
+
+    expect(api.publishDormitoryCost).toHaveBeenCalledWith('cost-1')
+    expect(api.uploadDormitoryCostAttach).toHaveBeenCalledTimes(1)
+    expect(api.payDormitoryCost).toHaveBeenCalledWith('detail-1', { voucherAttachId: 'att-pay' })
+    expect(api.cancelDormitoryCost).toHaveBeenCalledWith('cost-1')
+    expect(api.deleteDormitoryCost).toHaveBeenCalledWith('cost-1')
+    expect(api.fetchDormitoryCostStat).toHaveBeenCalledTimes(5)
+    expect(api.fetchDormitoryCostList).toHaveBeenCalledTimes(5)
+    expect(api.fetchDormitoryCostDetail).toHaveBeenCalledTimes(4)
+    expect(model.state.detail.visible).toBe(false)
+    expect(model.state.list.selectedId).toBe('')
+  })
+
+  it('opens pay dialog from current user member detail and stores uploaded voucher before submit', async () => {
+    const api = {
+      fetchDormitoryCostDetail: vi.fn().mockResolvedValue({
+        id: 'cost-1',
+        status: 1,
+        canPay: true,
+        memberList: [
+          {
+            detailId: 'detail-1',
+            studentId: 'stu-1',
+            studentName: '张三',
+            amountDue: 42,
+            isCurrentUser: true
+          },
+          {
+            detailId: 'detail-2',
+            studentId: 'stu-2',
+            studentName: '李四',
+            amountDue: 42,
+            isCurrentUser: false
+          }
+        ]
+      }),
+      uploadDormitoryCostAttach: vi.fn().mockResolvedValue({ id: 'att-pay', url: 'https://example.com/pay.png' }),
+      payDormitoryCost: vi.fn().mockResolvedValue({}),
+      fetchDormitoryCostStat: vi.fn().mockResolvedValue({
+        roomId: 'room-1',
+        buildingNum: '1栋',
+        roomNum: '101',
+        totalCount: 1,
+        unpaidCount: 0,
+        monthCompletedCount: 1
+      }),
+      fetchDormitoryCostList: vi.fn().mockResolvedValue({ list: [{ id: 'cost-1' }], total: 1 })
+    }
+    const model = createDormitoryCostPageModel({ api, showError: vi.fn() })
+
+    await model.handleSelectCost({ id: 'cost-1' })
+    model.openPayDialog()
+    await model.handlePayVoucherChange(new File(['voucher'], 'voucher.png', { type: 'image/png' }))
+
+    expect(model.state.pay.visible).toBe(true)
+    expect(model.state.pay.detailId).toBe('detail-1')
+    expect(model.state.pay.studentName).toBe('张三')
+    expect(model.state.pay.amountDue).toBe(42)
+    expect(model.state.pay.voucherAttachId).toBe('att-pay')
+    expect(model.state.pay.voucherUrl).toBe('https://example.com/pay.png')
+
+    await model.submitPay()
+
+    expect(api.payDormitoryCost).toHaveBeenCalledWith('detail-1', { voucherAttachId: 'att-pay' })
+  })
 })

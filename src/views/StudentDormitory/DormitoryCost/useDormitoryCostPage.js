@@ -2,6 +2,15 @@ import { reactive } from 'vue'
 import * as dormitoryCostApi from '../../../api/student/dormitoryCost'
 import { showError } from '../../../util/message/message'
 
+const createEmptyPayState = () => ({
+  visible: false,
+  detailId: '',
+  studentName: '',
+  amountDue: '',
+  voucherAttachId: '',
+  voucherUrl: ''
+})
+
 const createInitialState = () => ({
   stat: {
     loading: false,
@@ -44,14 +53,7 @@ const createInitialState = () => ({
     sourceVoucherUrl: '',
     memberList: []
   },
-  pay: {
-    visible: false,
-    detailId: '',
-    studentName: '',
-    amountDue: '',
-    voucherAttachId: '',
-    voucherUrl: ''
-  },
+  pay: createEmptyPayState(),
   ui: {
     pageLoading: false,
     bootstrapError: '',
@@ -96,7 +98,7 @@ export function createDormitoryCostPageModel(deps = {}) {
   }
 
   const closePayDialog = () => {
-    state.pay.visible = false
+    Object.assign(state.pay, createEmptyPayState())
   }
 
   const handleCloseDetail = () => {
@@ -108,6 +110,13 @@ export function createDormitoryCostPageModel(deps = {}) {
 
   const resetDetailState = () => {
     handleCloseDetail()
+  }
+
+  const refreshAfterMutation = async () => {
+    await Promise.all([loadStat(), loadList()])
+    if (state.list.selectedId) {
+      await handleSelectCost({ id: state.list.selectedId })
+    }
   }
 
   const loadList = async () => {
@@ -203,6 +212,93 @@ export function createDormitoryCostPageModel(deps = {}) {
     }
   }
 
+  const openPayDialog = () => {
+    const detail = state.detail.data
+    const currentMember = detail?.memberList?.find((item) => item?.isCurrentUser)
+    if (!detail?.canPay || !currentMember?.detailId) return
+    Object.assign(state.pay, {
+      visible: true,
+      detailId: currentMember.detailId,
+      studentName: currentMember.studentName || '',
+      amountDue: currentMember.amountDue ?? '',
+      voucherAttachId: '',
+      voucherUrl: ''
+    })
+  }
+
+  const handlePayVoucherChange = async (file) => {
+    const rawFile = file?.raw ?? file
+    if (!rawFile) return
+    state.ui.uploadingPayVoucher = true
+    try {
+      const payload = await api.uploadDormitoryCostAttach(rawFile)
+      state.pay.voucherAttachId = payload?.data?.id ?? payload?.id ?? ''
+      state.pay.voucherUrl = payload?.data?.url ?? payload?.url ?? ''
+    } catch (error) {
+      onError(error, '\u4e0a\u4f20\u7f34\u8d39\u51ed\u8bc1\u5931\u8d25')
+    } finally {
+      state.ui.uploadingPayVoucher = false
+    }
+  }
+
+  const submitPay = async () => {
+    if (!state.pay.detailId) return
+    if (!state.pay.voucherAttachId) {
+      onError(null, '\u8bf7\u5148\u4e0a\u4f20\u4e2a\u4eba\u8f6c\u8d26\u51ed\u8bc1')
+      return
+    }
+    state.ui.payLoading = true
+    try {
+      await api.payDormitoryCost(state.pay.detailId, { voucherAttachId: state.pay.voucherAttachId })
+      closePayDialog()
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error, '\u63d0\u4ea4\u7f34\u8d39\u5931\u8d25')
+    } finally {
+      state.ui.payLoading = false
+    }
+  }
+
+  const handlePublish = async () => {
+    if (!state.detail.data?.canPublish || !state.list.selectedId) return
+    state.ui.publishLoading = true
+    try {
+      await api.publishDormitoryCost(state.list.selectedId)
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error, '\u53d1\u5e03\u516c\u644a\u5355\u5931\u8d25')
+    } finally {
+      state.ui.publishLoading = false
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!state.detail.data?.canCancel || !state.list.selectedId) return
+    state.ui.cancelLoading = true
+    try {
+      await api.cancelDormitoryCost(state.list.selectedId)
+      await refreshAfterMutation()
+    } catch (error) {
+      onError(error, '\u53d6\u6d88\u516c\u644a\u5355\u5931\u8d25')
+    } finally {
+      state.ui.cancelLoading = false
+    }
+  }
+
+  const handleDeleteDraft = async () => {
+    if (Number(state.detail.data?.status) !== 0 || !state.list.selectedId) return
+    state.ui.deleteLoading = true
+    try {
+      await api.deleteDormitoryCost(state.list.selectedId)
+      handleCloseDetail()
+      await Promise.all([loadStat(), loadList()])
+    } catch (error) {
+      onError(error, '\u5220\u9664\u8349\u7a3f\u5931\u8d25')
+    } finally {
+      state.ui.deleteLoading = false
+    }
+  }
+
   return {
     state,
     buildListParams,
@@ -215,6 +311,13 @@ export function createDormitoryCostPageModel(deps = {}) {
     handlePageChange,
     handlePageSizeChange,
     openCreate,
+    openPayDialog,
+    handlePayVoucherChange,
+    submitPay,
+    handlePublish,
+    handleCancel,
+    handleDeleteDraft,
+    refreshAfterMutation,
     loadStat,
     loadList,
     loadBootstrap,

@@ -89,7 +89,15 @@ watch(isStudentUser, (isStudent) => {
         :visible="model.state.detail.visible"
         :loading="model.state.detail.loading"
         :detail="model.state.detail.data"
+        :publish-loading="model.state.ui.publishLoading"
+        :pay-loading="model.state.ui.payLoading"
+        :cancel-loading="model.state.ui.cancelLoading"
+        :delete-loading="model.state.ui.deleteLoading"
         @close="model.handleCloseDetail"
+        @publish="model.handlePublish"
+        @pay="model.openPayDialog"
+        @cancel="model.handleCancel"
+        @delete-draft="model.handleDeleteDraft"
       />
 
       <DormitoryCostFormDialog
@@ -103,7 +111,11 @@ watch(isStudentUser, (isStudent) => {
       <DormitoryCostPayDialog
         :visible="model.state.pay.visible"
         :pay="model.state.pay"
+        :uploading="model.state.ui.uploadingPayVoucher"
+        :submitting="model.state.ui.payLoading"
         @close="model.closePayDialog"
+        @voucher-change="model.handlePayVoucherChange"
+        @submit="model.submitPay"
       />
     </template>
   </section>

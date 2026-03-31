@@ -16,6 +16,12 @@ const testContext = vi.hoisted(() => ({
   closeForm: vi.fn(),
   closePayDialog: vi.fn(),
   handleCloseDetail: vi.fn(),
+  handlePublish: vi.fn(),
+  openPayDialog: vi.fn(),
+  handleCancel: vi.fn(),
+  handleDeleteDraft: vi.fn(),
+  handlePayVoucherChange: vi.fn(),
+  submitPay: vi.fn(),
   state: {
     stat: {
       data: {
@@ -43,7 +49,8 @@ const testContext = vi.hoisted(() => ({
           myPayStatusLabel: '未缴'
         }
       ],
-      total: 1
+      total: 1,
+      selectedId: ''
     },
     detail: { visible: false, loading: false, data: null },
     form: {
@@ -64,7 +71,12 @@ const testContext = vi.hoisted(() => ({
       noRoomBinding: false,
       formVisible: false,
       formMode: 'create',
-      memberSourceUnavailable: true
+      memberSourceUnavailable: true,
+      publishLoading: false,
+      payLoading: false,
+      cancelLoading: false,
+      deleteLoading: false,
+      uploadingPayVoucher: false
     }
   }
 }))
@@ -116,15 +128,29 @@ const resetState = () => {
     }
   ]
   testContext.state.list.total = 1
+  testContext.state.list.selectedId = ''
   testContext.state.detail.visible = false
   testContext.state.detail.loading = false
   testContext.state.detail.data = null
+  Object.assign(testContext.state.pay, {
+    visible: false,
+    detailId: '',
+    studentName: '',
+    amountDue: '',
+    voucherAttachId: '',
+    voucherUrl: ''
+  })
   testContext.state.ui.pageLoading = false
   testContext.state.ui.bootstrapError = ''
   testContext.state.ui.noRoomBinding = false
   testContext.state.ui.formVisible = false
   testContext.state.ui.formMode = 'create'
   testContext.state.ui.memberSourceUnavailable = true
+  testContext.state.ui.publishLoading = false
+  testContext.state.ui.payLoading = false
+  testContext.state.ui.cancelLoading = false
+  testContext.state.ui.deleteLoading = false
+  testContext.state.ui.uploadingPayVoucher = false
 }
 
 const buildWrapper = async (options = {}) => {
@@ -148,6 +174,12 @@ describe('DormitoryCost page shell', () => {
   beforeEach(() => {
     testContext.loadBootstrap.mockReset()
     testContext.handleSelectCost.mockReset()
+    testContext.handlePublish.mockReset()
+    testContext.openPayDialog.mockReset()
+    testContext.handleCancel.mockReset()
+    testContext.handleDeleteDraft.mockReset()
+    testContext.handlePayVoucherChange.mockReset()
+    testContext.submitPay.mockReset()
     resetState()
     setStudentUser()
   })
@@ -157,7 +189,7 @@ describe('DormitoryCost page shell', () => {
     await flushPromises()
 
     expect(testContext.loadBootstrap).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('1栋-101')
+    expect(wrapper.text()).toContain('1栋101')
     expect(wrapper.text()).toContain('3月聚餐费用')
     expect(wrapper.text()).toContain('待缴人数')
     expect(wrapper.find('.overview-create-button').attributes('disabled')).toBeDefined()
@@ -215,6 +247,66 @@ describe('DormitoryCost page shell', () => {
     expect(testContext.handleSelectCost).toHaveBeenCalledWith(testContext.state.list.items[0])
     expect(wrapper.text()).toContain('公摊详情')
     expect(wrapper.text()).toContain('凭证待补')
+  })
+
+  it('wires detail actions and pay dialog events back to the page model', async () => {
+    testContext.state.detail.visible = true
+    testContext.state.detail.data = {
+      id: 'cost-1',
+      title: '3月聚餐费用',
+      totalAmount: 168,
+      initiatorName: '张三',
+      occurredDate: '2026-03-30',
+      dueTime: '2026-04-02 22:00',
+      status: 0,
+      statusLabel: '草稿',
+      canPublish: true,
+      canPay: true,
+      canCancel: true,
+      remark: '凭证待补',
+      memberList: []
+    }
+    testContext.state.pay.visible = true
+
+    const wrapper = await buildWrapper({
+      stubs: {
+        DormitoryCostDetailDrawer: {
+          emits: ['publish', 'pay', 'cancel', 'delete-draft', 'close'],
+          template: `
+            <div class="detail-drawer-stub">
+              <button class="publish-action" @click="$emit('publish')">publish</button>
+              <button class="pay-action" @click="$emit('pay')">pay</button>
+              <button class="cancel-action" @click="$emit('cancel')">cancel</button>
+              <button class="delete-action" @click="$emit('delete-draft')">delete</button>
+            </div>
+          `
+        },
+        DormitoryCostPayDialog: {
+          emits: ['voucher-change', 'submit', 'close'],
+          template: `
+            <div class="pay-dialog-stub">
+              <button class="voucher-action" @click="$emit('voucher-change', 'file-token')">voucher</button>
+              <button class="submit-pay-action" @click="$emit('submit')">submit-pay</button>
+            </div>
+          `
+        }
+      }
+    })
+    await flushPromises()
+
+    await wrapper.find('.publish-action').trigger('click')
+    await wrapper.find('.pay-action').trigger('click')
+    await wrapper.find('.cancel-action').trigger('click')
+    await wrapper.find('.delete-action').trigger('click')
+    await wrapper.find('.voucher-action').trigger('click')
+    await wrapper.find('.submit-pay-action').trigger('click')
+
+    expect(testContext.handlePublish).toHaveBeenCalledTimes(1)
+    expect(testContext.openPayDialog).toHaveBeenCalledTimes(1)
+    expect(testContext.handleCancel).toHaveBeenCalledTimes(1)
+    expect(testContext.handleDeleteDraft).toHaveBeenCalledTimes(1)
+    expect(testContext.handlePayVoucherChange).toHaveBeenCalledWith('file-token')
+    expect(testContext.submitPay).toHaveBeenCalledTimes(1)
   })
 })
 

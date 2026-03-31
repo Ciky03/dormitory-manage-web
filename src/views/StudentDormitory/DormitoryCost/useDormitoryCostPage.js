@@ -106,6 +106,10 @@ export function createDormitoryCostPageModel(deps = {}) {
     state.list.selectedId = ''
   }
 
+  const resetDetailState = () => {
+    handleCloseDetail()
+  }
+
   const loadList = async () => {
     state.list.loading = true
     try {
@@ -113,7 +117,7 @@ export function createDormitoryCostPageModel(deps = {}) {
       state.list.items = Array.isArray(data?.list) ? data.list : []
       state.list.total = Number(data?.total ?? 0)
     } catch (error) {
-      onError(error, '加载宿舍费用公摊列表失败')
+      onError(error, '\u52a0\u8f7d\u5bbf\u820d\u8d39\u7528\u516c\u62a5\u5217\u8868\u5931\u8d25')
       state.list.items = []
       state.list.total = 0
     } finally {
@@ -130,7 +134,7 @@ export function createDormitoryCostPageModel(deps = {}) {
     } catch (error) {
       state.stat.data = createInitialState().stat.data
       if (!silent) {
-        onError(error, '加载宿舍费用公摊统计失败')
+        onError(error, '\u52a0\u8f7d\u5bbf\u820d\u8d39\u7528\u516c\u62a5\u7edf\u8ba1\u5931\u8d25')
       }
       if (throwOnError) throw error
     } finally {
@@ -144,10 +148,11 @@ export function createDormitoryCostPageModel(deps = {}) {
     state.list.selectedId = id
     state.detail.visible = true
     state.detail.loading = true
+    state.detail.data = null
     try {
       state.detail.data = await api.fetchDormitoryCostDetail(id)
     } catch (error) {
-      onError(error, '加载宿舍费用公摊详情失败')
+      onError(error, '\u52a0\u8f7d\u5bbf\u820d\u8d39\u7528\u516c\u62a5\u8be6\u60c5\u5931\u8d25')
       state.detail.data = null
     } finally {
       state.detail.loading = false
@@ -162,13 +167,15 @@ export function createDormitoryCostPageModel(deps = {}) {
       const stat = await loadStat({ throwOnError: true, silent: true })
       if (!String(stat?.roomId || '').trim()) {
         state.ui.noRoomBinding = true
+        resetDetailState()
         state.list.items = []
         state.list.total = 0
         return
       }
       await loadList()
     } catch (error) {
-      state.ui.bootstrapError = String(error?.message || '加载宿舍费用公摊失败')
+      resetDetailState()
+      state.ui.bootstrapError = String(error?.message || '\u52a0\u8f7d\u5bbf\u820d\u8d39\u7528\u516c\u62a5\u5931\u8d25')
     } finally {
       state.ui.pageLoading = false
     }
@@ -192,7 +199,7 @@ export function createDormitoryCostPageModel(deps = {}) {
 
   const openCreate = () => {
     if (state.ui.memberSourceUnavailable) {
-      onError(null, '待宿舍成员接口补齐后启用新建公摊单')
+      onError(null, '\u5f85\u5bbf\u820d\u6210\u5458\u63a5\u53e3\u8865\u9f50\u540e\u542f\u7528\u65b0\u5efa\u516c\u62a5\u5355')
     }
   }
 

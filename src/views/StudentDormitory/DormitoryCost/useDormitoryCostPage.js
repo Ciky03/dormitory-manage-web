@@ -2,6 +2,18 @@ import { reactive } from 'vue'
 import * as dormitoryCostApi from '../../../api/student/dormitoryCost'
 import { showError } from '../../../util/message/message'
 
+const createEmptyFormState = () => ({
+  id: '',
+  title: '',
+  totalAmount: '',
+  occurredDate: '',
+  dueTime: '',
+  remark: '',
+  sourceVoucherAttachId: '',
+  sourceVoucherUrl: '',
+  memberList: []
+})
+
 const createEmptyPayState = () => ({
   visible: false,
   detailId: '',
@@ -43,15 +55,7 @@ const createInitialState = () => ({
     data: null
   },
   form: {
-    id: '',
-    title: '',
-    totalAmount: '',
-    occurredDate: '',
-    dueTime: '',
-    remark: '',
-    sourceVoucherAttachId: '',
-    sourceVoucherUrl: '',
-    memberList: []
+    ...createEmptyFormState()
   },
   pay: createEmptyPayState(),
   ui: {
@@ -67,7 +71,7 @@ const createInitialState = () => ({
     deleteLoading: false,
     uploadingSourceVoucher: false,
     uploadingPayVoucher: false,
-    memberSourceUnavailable: true
+    memberSourceUnavailable: false
   }
 })
 
@@ -206,10 +210,37 @@ export function createDormitoryCostPageModel(deps = {}) {
     await loadList()
   }
 
-  const openCreate = () => {
-    if (state.ui.memberSourceUnavailable) {
-      onError(null, '\u5f85\u5bbf\u820d\u6210\u5458\u63a5\u53e3\u8865\u9f50\u540e\u542f\u7528\u65b0\u5efa\u516c\u62a5\u5355')
+  const loadRoomMembers = async () => {
+    try {
+      const members = await api.fetchDormitoryRoomMembers()
+      const memberList = Array.isArray(members) ? members : []
+      if (!memberList.length) {
+        state.ui.memberSourceUnavailable = true
+        onError(null, '当前宿舍暂无可用于公摊的成员数据')
+        return []
+      }
+      state.ui.memberSourceUnavailable = false
+      return memberList
+    } catch (error) {
+      state.ui.memberSourceUnavailable = true
+      onError(error, '当前宿舍暂无可用于公摊的成员数据')
+      return []
     }
+  }
+
+  const openCreate = async () => {
+    state.ui.formVisible = false
+    const members = await loadRoomMembers()
+    if (!members.length) return
+    Object.assign(state.form, createEmptyFormState(), {
+      memberList: members.map((item) => ({
+        studentId: item?.studentId ?? '',
+        studentName: item?.studentName ?? '',
+        amountDue: ''
+      }))
+    })
+    state.ui.formMode = 'create'
+    state.ui.formVisible = true
   }
 
   const openPayDialog = () => {
@@ -311,6 +342,7 @@ export function createDormitoryCostPageModel(deps = {}) {
     handlePageChange,
     handlePageSizeChange,
     openCreate,
+    loadRoomMembers,
     openPayDialog,
     handlePayVoucherChange,
     submitPay,

@@ -12,13 +12,13 @@ const buildQuery = (params = {}) => {
 const unwrapResult = (payload) => payload?.data ?? payload ?? {}
 
 export async function fetchDormitoryCostStat() {
-  const payload = await request('/dormitory/cost/stat', { method: 'GET' })
+  const payload = await request('/business/dormitory/cost/stat', { method: 'GET' })
   return unwrapResult(payload)
 }
 
 export async function fetchDormitoryCostList(params = {}) {
   const query = buildQuery(params)
-  const payload = await request(`/dormitory/cost/list${query ? `?${query}` : ''}`, { method: 'GET' })
+  const payload = await request(`/business/dormitory/cost/list${query ? `?${query}` : ''}`, { method: 'GET' })
   const data = unwrapResult(payload)
   return {
     list: Array.isArray(data?.list) ? data.list : [],
@@ -27,32 +27,38 @@ export async function fetchDormitoryCostList(params = {}) {
 }
 
 export async function fetchDormitoryCostDetail(id) {
-  const payload = await request(`/dormitory/cost/detail/${encodeURIComponent(id)}`, { method: 'GET' })
+  const payload = await request(`/business/dormitory/cost/detail/${encodeURIComponent(id)}`, { method: 'GET' })
   return unwrapResult(payload)
 }
 
+export async function fetchDormitoryRoomMembers() {
+  const payload = await request('/business/person/room/member/list', { method: 'GET' })
+  const data = unwrapResult(payload)
+  return Array.isArray(data) ? data : []
+}
+
 export function addDormitoryCost(body) {
-  return request('/dormitory/cost/add', { method: 'POST', body })
+  return request('/business/dormitory/cost/add', { method: 'POST', body })
 }
 
 export function editDormitoryCost(id, body) {
-  return request(`/dormitory/cost/edit/${encodeURIComponent(id)}`, { method: 'PUT', body })
+  return request(`/business/dormitory/cost/edit/${encodeURIComponent(id)}`, { method: 'PUT', body })
 }
 
 export function publishDormitoryCost(id) {
-  return request(`/dormitory/cost/publish/${encodeURIComponent(id)}`, { method: 'POST' })
+  return request(`/business/dormitory/cost/publish/${encodeURIComponent(id)}`, { method: 'POST' })
 }
 
 export function payDormitoryCost(detailId, body) {
-  return request(`/dormitory/cost/pay/${encodeURIComponent(detailId)}`, { method: 'POST', body })
+  return request(`/business/dormitory/cost/pay/${encodeURIComponent(detailId)}`, { method: 'POST', body })
 }
 
 export function cancelDormitoryCost(id) {
-  return request(`/dormitory/cost/cancel/${encodeURIComponent(id)}`, { method: 'POST' })
+  return request(`/business/dormitory/cost/cancel/${encodeURIComponent(id)}`, { method: 'POST' })
 }
 
 export function deleteDormitoryCost(id) {
-  return request(`/dormitory/cost/del/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  return request(`/business/dormitory/cost/del/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 export function uploadDormitoryCostAttach(file) {

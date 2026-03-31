@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDormitoryCostPageModel } from '../useDormitoryCostPage'
 
 describe('createDormitoryCostPageModel read flows', () => {
+  it('starts with create enabled until member loading proves otherwise', () => {
+    const model = createDormitoryCostPageModel({ showError: vi.fn() })
+
+    expect(model.state.ui.memberSourceUnavailable).toBe(false)
+  })
+
   it('loads stat and list, and switches to no-room mode when roomId is empty', async () => {
     const api = {
       fetchDormitoryCostStat: vi.fn().mockResolvedValue({
@@ -27,14 +33,14 @@ describe('createDormitoryCostPageModel read flows', () => {
     const api = {
       fetchDormitoryCostStat: vi.fn().mockResolvedValue({
         roomId: 'room-1',
-        buildingNum: '1\u6811',
+        buildingNum: '1栋',
         roomNum: '101',
         totalCount: 8,
         unpaidCount: 3,
         monthCompletedCount: 2
       }),
       fetchDormitoryCostList: vi.fn().mockResolvedValue({
-        list: [{ id: 'cost-1', title: '3\u6708\u805a\u9910\u8d39\u7528' }],
+        list: [{ id: 'cost-1', title: '3月聚餐费用' }],
         total: 1
       })
     }
@@ -51,7 +57,7 @@ describe('createDormitoryCostPageModel read flows', () => {
       pageNum: 1,
       pageSize: 10
     })
-    expect(model.state.list.items).toEqual([{ id: 'cost-1', title: '3\u6708\u805a\u9910\u8d39\u7528' }])
+    expect(model.state.list.items).toEqual([{ id: 'cost-1', title: '3月聚餐费用' }])
     expect(model.state.list.total).toBe(1)
     expect(model.state.ui.noRoomBinding).toBe(false)
   })
@@ -64,21 +70,21 @@ describe('createDormitoryCostPageModel read flows', () => {
     const api = {
       fetchDormitoryCostStat: vi.fn().mockResolvedValue({
         roomId: 'room-1',
-        buildingNum: '1\u6811',
+        buildingNum: '1栋',
         roomNum: '101',
         totalCount: 8,
         unpaidCount: 3,
         monthCompletedCount: 2
       }),
       fetchDormitoryCostList: vi.fn().mockResolvedValue({
-        list: [{ id: 'cost-1', title: '3\u6708\u805a\u9910\u8d39\u7528' }],
+        list: [{ id: 'cost-1', title: '3月聚餐费用' }],
         total: 1
       }),
       fetchDormitoryCostDetail: vi.fn().mockImplementation(() => detailPromise)
     }
     const model = createDormitoryCostPageModel({ api, showError: vi.fn() })
 
-    model.updateFilters({ keywords: ' \u805a\u9910 ', status: '1', month: '2026-03', onlyMine: true })
+    model.updateFilters({ keywords: ' 聚餐 ', status: '1', month: '2026-03', onlyMine: true })
     await model.loadList()
     model.state.detail.data = { id: 'old-detail' }
     const loadingPromise = model.handleSelectCost({ id: 'cost-1' })
@@ -87,15 +93,15 @@ describe('createDormitoryCostPageModel read flows', () => {
 
     resolveDetail({
       id: 'cost-1',
-      title: '3\u6708\u805a\u9910\u8d39\u7528',
+      title: '3月聚餐费用',
       status: 1,
-      statusLabel: '\u5df2\u53d1\u5e03',
+      statusLabel: '已发布',
       memberList: []
     })
     await loadingPromise
 
     expect(api.fetchDormitoryCostList).toHaveBeenCalledWith({
-      keywords: '\u805a\u9910',
+      keywords: '聚餐',
       status: '1',
       month: '2026-03',
       onlyMine: true,
@@ -105,6 +111,57 @@ describe('createDormitoryCostPageModel read flows', () => {
     expect(api.fetchDormitoryCostDetail).toHaveBeenCalledWith('cost-1')
     expect(model.state.detail.visible).toBe(true)
     expect(model.state.detail.data.id).toBe('cost-1')
+  })
+
+  it('opens create and seeds the member list when room members are available', async () => {
+    const api = {
+      fetchDormitoryRoomMembers: vi.fn().mockResolvedValue([
+        { studentId: 'stu-1', studentName: '张三', isCurrentUser: true, avatarUrl: 'https://example.com/a.png' },
+        { studentId: 'stu-2', studentName: '李四', isCurrentUser: false, avatarUrl: 'https://example.com/b.png' }
+      ])
+    }
+    const model = createDormitoryCostPageModel({ api, showError: vi.fn() })
+
+    model.state.form.id = 'old-id'
+    model.state.form.title = 'old-title'
+    model.state.ui.formVisible = false
+    model.state.ui.memberSourceUnavailable = true
+
+    await model.openCreate()
+
+    expect(api.fetchDormitoryRoomMembers).toHaveBeenCalledTimes(1)
+    expect(model.state.ui.memberSourceUnavailable).toBe(false)
+    expect(model.state.ui.formMode).toBe('create')
+    expect(model.state.ui.formVisible).toBe(true)
+    expect(model.state.form).toEqual({
+      id: '',
+      title: '',
+      totalAmount: '',
+      occurredDate: '',
+      dueTime: '',
+      remark: '',
+      sourceVoucherAttachId: '',
+      sourceVoucherUrl: '',
+      memberList: [
+        { studentId: 'stu-1', studentName: '张三', amountDue: '' },
+        { studentId: 'stu-2', studentName: '李四', amountDue: '' }
+      ]
+    })
+  })
+
+  it('keeps create closed and reports when room members are unavailable', async () => {
+    const showError = vi.fn()
+    const api = {
+      fetchDormitoryRoomMembers: vi.fn().mockResolvedValue([])
+    }
+    const model = createDormitoryCostPageModel({ api, showError })
+
+    await model.openCreate()
+
+    expect(api.fetchDormitoryRoomMembers).toHaveBeenCalledTimes(1)
+    expect(model.state.ui.memberSourceUnavailable).toBe(true)
+    expect(model.state.ui.formVisible).toBe(false)
+    expect(showError).toHaveBeenCalledWith(null, '当前宿舍暂无可用于公摊的成员数据')
   })
 
   it('clears stale detail state when bootstrap falls into no-room or error', async () => {
@@ -148,19 +205,6 @@ describe('createDormitoryCostPageModel read flows', () => {
     expect(errorModel.state.ui.bootstrapError).toBe('boom')
   })
 
-  it('blocks create entry and reports the member source restriction', () => {
-    const showError = vi.fn()
-    const model = createDormitoryCostPageModel({ showError })
-
-    model.openCreate()
-
-    expect(showError).toHaveBeenCalledWith(
-      null,
-      '\u5f85\u5bbf\u820d\u6210\u5458\u63a5\u53e3\u8865\u9f50\u540e\u542f\u7528\u65b0\u5efa\u516c\u62a5\u5355'
-    )
-    expect(model.state.ui.formVisible).toBe(false)
-  })
-
   it('reuses the current filters for pagination and restores defaults on reset', async () => {
     const api = {
       fetchDormitoryCostList: vi.fn().mockResolvedValue({ list: [], total: 0 })
@@ -168,7 +212,7 @@ describe('createDormitoryCostPageModel read flows', () => {
     const model = createDormitoryCostPageModel({ api, showError: vi.fn() })
 
     model.updateFilters({
-      keywords: '  \u6c34\u7535  ',
+      keywords: '  水电  ',
       status: '2',
       month: '2026-03',
       onlyMine: true,
@@ -181,7 +225,7 @@ describe('createDormitoryCostPageModel read flows', () => {
     await model.handleReset()
 
     expect(api.fetchDormitoryCostList).toHaveBeenNthCalledWith(1, {
-      keywords: '\u6c34\u7535',
+      keywords: '水电',
       status: '2',
       month: '2026-03',
       onlyMine: true,
@@ -189,7 +233,7 @@ describe('createDormitoryCostPageModel read flows', () => {
       pageSize: 20
     })
     expect(api.fetchDormitoryCostList).toHaveBeenNthCalledWith(2, {
-      keywords: '\u6c34\u7535',
+      keywords: '水电',
       status: '2',
       month: '2026-03',
       onlyMine: true,
@@ -238,6 +282,9 @@ describe('createDormitoryCostPageModel read flows', () => {
           }
         ]
       }),
+      fetchDormitoryRoomMembers: vi.fn().mockResolvedValue([
+        { studentId: 'stu-1', studentName: '张三', isCurrentUser: true, avatarUrl: '' }
+      ]),
       publishDormitoryCost: vi.fn().mockResolvedValue({}),
       uploadDormitoryCostAttach: vi.fn().mockResolvedValue({ data: { id: 'att-pay', url: 'https://example.com/pay.png' } }),
       payDormitoryCost: vi.fn().mockResolvedValue({}),
